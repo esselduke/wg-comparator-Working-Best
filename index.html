@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WG Access Comparator | AQCM</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        
+        <!-- Header -->
+        <header id="main-header">
+            <div class="header-content">
+                <h1 class="app-title">
+                    <span class="title-main">WG Access Comparator</span>
+                    <span class="title-sub">Access Validation Tool</span>
+                </h1>
+                
+                <!-- Header Actions -->
+                <div class="header-actions">
+                    <button id="btn-log" class="btn-icon" title="View Activity Log">
+                        <span>📋</span> Log
+                    </button>
+                    <button id="btn-options" class="btn-icon" title="Options">
+                        <span>⚙️</span> Options
+                    </button>
+                    <button id="btn-guide" class="btn-icon" title="User Guide">
+                        <span>📖</span> Guide
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Control Toolbar -->
+        <section id="toolbar" class="toolbar">
+            <div class="toolbar-group">
+                <!-- Mode Selection -->
+                <div class="control-group">
+                    <label for="mode-select">Mode:</label>
+                    <select id="mode-select">
+                        <option value="Add">Add (New User)</option>
+                        <option value="Modify">Modify (Existing User)</option>
+                        <option value="Monthly">Monthly Audit</option>
+                    </select>
+                </div>
+
+                <!-- Role Selection -->
+                <div class="control-group" id="role-group">
+                    <label for="role-select">Role:</label>
+                    <select id="role-select">
+                        <option value="">-- Select Role --</option>
+                        <option value="SA PROFILE">SA PROFILE</option>
+                        <option value="SA WITH TRANSIT & SYND. PROFILE">SA WITH TRANSIT & SYND. PROFILE</option>
+                        <option value="SA WITH SYNDICATE PROFILE">SA WITH SYNDICATE PROFILE</option>
+                        <option value="IA PROFILE">IA PROFILE</option>
+                        <option value="ASSOCIATE IA PROFILE">ASSOCIATE IA PROFILE</option>
+                        <option value="Branch Assistant & Cage Profile">Branch Assistant & Cage Profile</option>
+                        <option value="BA & CAGE INQUIRY">BA & CAGE INQUIRY</option>
+                        <option value="BA/ABM/BM and Backup">BA/ABM/BM and Backup</option>
+                        <option value="BA ABM BM AND BACKUP PROFILE">BA ABM BM AND BACKUP PROFILE</option>
+                        <option value="BA/ABM/BM ACWS INQUIRY">BA/ABM/BM ACWS INQUIRY</option>
+                        <option value="INQUIRY ONLY - BRANCH ASSISTANT AND CAGE PROFILE - Secondary Role">INQUIRY ONLY - Secondary Role</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="toolbar-group toolbar-actions">
+                <button id="btn-compare" class="btn btn-primary">
+                    <span>▶ Compare</span>
+                </button>
+                <button id="btn-clear" class="btn btn-secondary">Clear All</button>
+            </div>
+        </section>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            
+            <!-- Input Section -->
+            <section id="input-section" class="input-panel">
+                
+                <!-- ADD MODE INPUTS -->
+                <div id="add-inputs" class="mode-inputs">
+                    <h2>Add Mode - New User</h2>
+                    
+                    <div class="input-group">
+                        <label for="add-servicenow">
+                            ServiceNow Request (IA Codes Only)
+                            <span class="help-text">Paste requested IA codes from ticket (e.g., DX2 DX7 DX5 RRU)</span>
+                        </label>
+                        <textarea 
+                            id="add-servicenow" 
+                            rows="6" 
+                            placeholder="DX2 DX7 DX5 RRU"></textarea>
+                        <small class="token-count" id="add-servicenow-count">0 codes</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="add-reflection">
+                            Reflection Added Access (All Codes)
+                            <span class="help-text">Paste all codes added in Reflection</span>
+                        </label>
+                        <textarea 
+                            id="add-reflection" 
+                            rows="8" 
+                            placeholder="DX2 DX7 DX5 REGA WGCOMMSTD *SAFUNC *SASCON"></textarea>
+                        <small class="token-count" id="add-reflection-count">0 codes</small>
+                    </div>
+                </div>
+
+                <!-- MODIFY MODE INPUTS -->
+                <div id="modify-inputs" class="mode-inputs" style="display: none;">
+                    <h2>Modify Mode - Existing User</h2>
+                    
+                    <div class="input-group">
+                        <label for="modify-servicenow">
+                            ServiceNow Request (IA Codes Only)
+                            <span class="help-text">Paste requested changes from ticket</span>
+                        </label>
+                        <textarea 
+                            id="modify-servicenow" 
+                            rows="5" 
+                            placeholder="DX2 DX7 DX5"></textarea>
+                        <small class="token-count" id="modify-servicenow-count">0 codes</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="modify-deleted">
+                            Reflection Deleted (All Old Access)
+                            <span class="help-text">Paste all codes that were deleted</span>
+                        </label>
+                        <textarea 
+                            id="modify-deleted" 
+                            rows="8" 
+                            placeholder="OLD1 OLD2 OLD3 ..."></textarea>
+                        <small class="token-count" id="modify-deleted-count">0 codes</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="modify-readded">
+                            Reflection Re-Added (All New Access)
+                            <span class="help-text">Paste all codes that were re-added</span>
+                        </label>
+                        <textarea 
+                            id="modify-readded" 
+                            rows="8" 
+                            placeholder="OLD1 OLD2 OLD3 DX2 DX7 DX5 ..."></textarea>
+                        <small class="token-count" id="modify-readded-count">0 codes</small>
+                    </div>
+                </div>
+
+                <!-- MONTHLY MODE INPUTS -->
+                <div id="monthly-inputs" class="mode-inputs" style="display: none;">
+                    <h2>Monthly Audit - Compare Only</h2>
+                    <p class="info-text">⚠️ Monthly mode only compares codes - no validation or suggestions</p>
+                    
+                    <div class="input-group">
+                        <label for="monthly-excel">
+                            Excel Column (Vertical Format)
+                            <span class="help-text">Paste codes from Excel - one per line (RRRR= will be stripped)</span>
+                        </label>
+                        <textarea 
+                            id="monthly-excel" 
+                            rows="12" 
+                            placeholder="RRRR=DX2
+RRRR=DX7
+RRRR=DX5
+RRRR=REGA"></textarea>
+                        <small class="token-count" id="monthly-excel-count">0 codes</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="monthly-tracker">
+                            Tracker File (Vertical Format)
+                            <span class="help-text">Paste codes from tracker file - one per line</span>
+                        </label>
+                        <textarea 
+                            id="monthly-tracker" 
+                            rows="12" 
+                            placeholder="DX2
+DX7
+DX5
+WGSTD
+REGA"></textarea>
+                        <small class="token-count" id="monthly-tracker-count">0 codes</small>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Branch Code Duplicate Checker (Separate Tool) -->
+            <section id="branch-checker-section" class="input-panel">
+                <h2>🔍 Branch Code Duplicate Checker</h2>
+                <p class="info-text">Check if specific codes already exist in branch bundles (independent of main comparison)</p>
+                
+                <div class="branch-checker-inputs">
+                    <div class="input-group">
+                        <label for="branch-bundle-codes">
+                            Branch Bundle Contents
+                            <span class="help-text">Paste all codes from branch bundles (*A331FC, etc.)</span>
+                        </label>
+                        <textarea 
+                            id="branch-bundle-codes" 
+                            rows="8" 
+                            placeholder="DX2 DX7 ABC DEF ..."></textarea>
+                        <small class="token-count" id="branch-bundle-count">0 codes</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="codes-to-check">
+                            Codes to Check
+                            <span class="help-text">Paste codes you want to check for duplicates</span>
+                        </label>
+                        <textarea 
+                            id="codes-to-check" 
+                            rows="6" 
+                            placeholder="DX2 DX7 DX5 ..."></textarea>
+                        <small class="token-count" id="codes-check-count">0 codes</small>
+                    </div>
+
+                    <button id="btn-check-branch" class="btn btn-primary">Check Duplicates</button>
+                </div>
+
+                <div id="branch-checker-results" style="display: none; margin-top: 1.5rem;">
+                    <h3>Branch Duplicate Results:</h3>
+                    <div id="branch-duplicates-list"></div>
+                    <div id="branch-unique-list"></div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="results-panel" style="display: none;">
+                
+                <!-- Results Header -->
+                <div class="results-header">
+                    <h2>Comparison Results</h2>
+                    <button id="btn-export" class="btn btn-secondary">Export CSV</button>
+                </div>
+
+                <!-- Mode-Specific Results -->
+                
+                <!-- ADD MODE RESULTS -->
+                <div id="add-results" class="results-content">
+                    
+                    <!-- Summary Stats -->
+                    <div class="summary-stats">
+                        <div class="stat-card stat-matched">
+                            <div class="stat-number" id="stat-matched">0</div>
+                            <div class="stat-label">Matched</div>
+                        </div>
+                        <div class="stat-card stat-missing">
+                            <div class="stat-number" id="stat-missing">0</div>
+                            <div class="stat-label">Missing</div>
+                        </div>
+                        <div class="stat-card stat-extra">
+                            <div class="stat-number" id="stat-extra">0</div>
+                            <div class="stat-label">Extra</div>
+                        </div>
+                        <div class="stat-card stat-errors">
+                            <div class="stat-number" id="stat-errors">0</div>
+                            <div class="stat-label">Errors</div>
+                        </div>
+                    </div>
+
+                    <!-- Side-by-Side Comparison (Excel Style) -->
+                    <div class="excel-comparison">
+                        <h3>📊 Side-by-Side Comparison (Like Excel)</h3>
+                        <div class="comparison-grid">
+                            <div class="comparison-column">
+                                <h4>Requested Codes</h4>
+                                <div id="requested-codes-list" class="vertical-code-list"></div>
+                            </div>
+                            <div class="comparison-column">
+                                <h4>Added Codes (All)</h4>
+                                <div id="added-codes-list" class="vertical-code-list"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Matrix Requirements -->
+                    <div class="result-section" id="matrix-section">
+                        <h3 class="section-title info">💡 Matrix Requirements Validation</h3>
+                        <div id="matrix-validation-details"></div>
+                    </div>
+
+                    <!-- Validation Errors -->
+                    <div class="result-section" id="errors-section">
+                        <h3 class="section-title error">🔴 Validation Errors</h3>
+                        <div id="validation-errors" class="error-list"></div>
+                    </div>
+
+                    <!-- Warnings -->
+                    <div class="result-section" id="warnings-section">
+                        <h3 class="section-title warning">⚠️ Warnings</h3>
+                        <div id="warnings-list" class="warning-list"></div>
+                    </div>
+
+                </div>
+
+                <!-- MODIFY MODE RESULTS -->
+                <div id="modify-results" class="results-content" style="display: none;">
+                    
+                    <!-- Summary Stats -->
+                    <div class="summary-stats">
+                        <div class="stat-card stat-matched">
+                            <div class="stat-number" id="stat-matched-modify">0</div>
+                            <div class="stat-label">Re-Added</div>
+                        </div>
+                        <div class="stat-card stat-missing">
+                            <div class="stat-number" id="stat-missing-modify">0</div>
+                            <div class="stat-label">Not Re-added</div>
+                        </div>
+                        <div class="stat-card stat-extra">
+                            <div class="stat-number" id="stat-extra-modify">0</div>
+                            <div class="stat-label">New Codes</div>
+                        </div>
+                        <div class="stat-card stat-errors">
+                            <div class="stat-number" id="stat-errors-modify">0</div>
+                            <div class="stat-label">Errors</div>
+                        </div>
+                    </div>
+
+                    <!-- Four-Column Comparison for Modify -->
+                    <div class="excel-comparison">
+                        <h3>📊 Modify Comparison (4-Column View)</h3>
+                        <div class="comparison-grid-four">
+                            <div class="comparison-column">
+                                <h4>Deleted</h4>
+                                <div id="modify-deleted-list" class="vertical-code-list"></div>
+                            </div>
+                            <div class="comparison-column">
+                                <h4>Re-Added</h4>
+                                <div id="modify-readded-list" class="vertical-code-list"></div>
+                            </div>
+                            <div class="comparison-column">
+                                <h4>Requested</h4>
+                                <div id="modify-requested-list" class="vertical-code-list"></div>
+                            </div>
+                            <div class="comparison-column">
+                                <h4>Final (All Added)</h4>
+                                <div id="modify-final-list" class="vertical-code-list"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Matrix Requirements -->
+                    <div class="result-section" id="matrix-section-modify">
+                        <h3 class="section-title info">💡 Matrix Requirements Validation</h3>
+                        <div id="matrix-validation-details-modify"></div>
+                    </div>
+
+                    <!-- Validation Errors -->
+                    <div class="result-section" id="errors-section-modify">
+                        <h3 class="section-title error">🔴 Validation Errors</h3>
+                        <div id="validation-errors-modify" class="error-list"></div>
+                    </div>
+
+                    <!-- Warnings -->
+                    <div class="result-section" id="warnings-section-modify">
+                        <h3 class="section-title warning">⚠️ Warnings</h3>
+                        <div id="warnings-list-modify" class="warning-list"></div>
+                    </div>
+
+                </div>
+
+                <!-- MONTHLY RESULTS (Side-by-Side) -->
+                <div id="monthly-results" class="results-content" style="display: none;">
+                    
+                    <div class="comparison-container">
+                        <div class="comparison-column">
+                            <h3>Excel Codes</h3>
+                            <div id="excel-codes-list" class="vertical-code-list"></div>
+                        </div>
+
+                        <div class="comparison-column">
+                            <h3>Tracker Codes</h3>
+                            <div id="tracker-codes-list" class="vertical-code-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="monthly-summary">
+                        <h4>Summary</h4>
+                        <div id="monthly-summary-text"></div>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- Modals -->
+        
+        <!-- Activity Log Modal -->
+        <div id="log-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📋 Activity Log</h2>
+                    <button class="modal-close" data-modal="log-modal">&times;</button>
+                </div>
+                <div class="modal-body" id="log-content">
+                    <p class="empty-state">No activity yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Options Modal -->
+        <div id="options-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>⚙️ Options</h2>
+                    <button class="modal-close" data-modal="options-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="option-group">
+                        <label>
+                            <input type="checkbox" id="opt-auto-scroll" checked>
+                            Auto-scroll to results
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label>
+                            <input type="checkbox" id="opt-show-stats" checked>
+                            Show summary statistics
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label>
+                            <input type="checkbox" id="opt-log-activity" checked>
+                            Log all comparisons
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Guide Modal -->
+        <div id="guide-modal" class="modal">
+            <div class="modal-content modal-wide">
+                <div class="modal-header">
+                    <h2>📖 User Guide</h2>
+                    <button class="modal-close" data-modal="guide-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="guide-section">
+                        <h3>Add Mode</h3>
+                        <p>For new user access provisioning:</p>
+                        <ol>
+                            <li>Select role from dropdown</li>
+                            <li>Paste ServiceNow requested IA codes</li>
+                            <li>Paste Reflection added codes</li>
+                            <li>Click Compare</li>
+                        </ol>
+                        <p><strong>The tool will show:</strong></p>
+                        <ul>
+                            <li>Side-by-side comparison (like Excel conditional formatting)</li>
+                            <li>Matched codes in green</li>
+                            <li>Missing codes in red (with INS warnings)</li>
+                            <li>Extra codes added (matrix requirements)</li>
+                            <li>Validation errors if matrix requirements missing</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-section">
+                        <h3>Modify Mode</h3>
+                        <p>For existing user access modifications:</p>
+                        <ol>
+                            <li>Select role from dropdown</li>
+                            <li>Paste requested changes</li>
+                            <li>Paste deleted codes</li>
+                            <li>Paste re-added codes</li>
+                            <li>Click Compare</li>
+                        </ol>
+                        <p><strong>Shows 4-column view:</strong></p>
+                        <ul>
+                            <li>What was deleted</li>
+                            <li>What was re-added</li>
+                            <li>What was requested</li>
+                            <li>Final access</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-section">
+                        <h3>Monthly Audit</h3>
+                        <p>Simple comparison without validation:</p>
+                        <ol>
+                            <li>Paste Excel codes (RRRR= auto-stripped)</li>
+                            <li>Paste Tracker codes</li>
+                            <li>Click Compare</li>
+                        </ol>
+                        <p>Green highlighting shows matches - no validation applied.</p>
+                    </div>
+
+                    <div class="guide-section">
+                        <h3>Branch Code Checker</h3>
+                        <p>Separate tool to check duplicates:</p>
+                        <ol>
+                            <li>Paste branch bundle contents</li>
+                            <li>Paste codes to check</li>
+                            <li>Click "Check Duplicates"</li>
+                        </ol>
+                        <p>Shows which codes already exist in branch bundles.</p>
+                    </div>
+
+                    <div class="guide-section">
+                        <h3>Tips</h3>
+                        <ul>
+                            <li>Use Ctrl/Cmd + Enter to compare quickly</li>
+                            <li>Export results to CSV for records</li>
+                            <li>Check Activity Log for history</li>
+                            <li>Side-by-side view mimics Excel workflow exactly</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container"></div>
+
+        <!-- Footer -->
+        <footer id="main-footer">
+            <p>Made by <span class="highlight">AQCM</span> – David Duke Essel</p>
+        </footer>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
