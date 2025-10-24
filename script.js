@@ -4,6 +4,7 @@
  * 
  * Complete validation tool for Wood Gundy access management
  * Supports Add, Modify, and Monthly workflows with full feature set
+ * NOW WITH: Branch code conversion (3-digit → *A###FC) for BA/Cage roles
  */
 
 // ============================================
@@ -17,6 +18,40 @@ const appState = {
         logActivity: true
     }
 };
+
+// ============================================
+// ROLES THAT SUPPORT BRANCH CODES
+// ============================================
+const BRANCH_CODE_ROLES = [
+    "BA & CAGE INQUIRY",
+    "BA/ABM/BM ACWS INQUIRY",
+    "BA/ABM/BM and Backup",
+    "Branch Assistant & Cage Profile",
+    "BA ABM BM AND BACKUP PROFILE",
+    "INQUIRY ONLY - BRANCH ASSISTANT AND CAGE PROFILE - Secondary Role"
+];
+
+/**
+ * Check if a role supports branch codes
+ * @param {string} role - Role name
+ * @returns {boolean}
+ */
+function roleSupportsBranchCodes(role) {
+    return BRANCH_CODE_ROLES.includes(role);
+}
+
+/**
+ * Convert 3-digit code to branch code format
+ * @param {string} code - Code to check (e.g., "417")
+ * @returns {string} - Converted code (e.g., "*A417FC") or original
+ */
+function convertToBranchCode(code) {
+    // Check if code is exactly 3 digits
+    if (/^\d{3}$/.test(code)) {
+        return `*A${code}FC`;
+    }
+    return code;
+}
 
 // ============================================
 // ROLE MATRIX CONFIGURATION
@@ -235,9 +270,10 @@ const ROLE_MATRIX = {
  * Parse input text into array of clean codes
  * @param {string} text - Raw input text
  * @param {boolean} stripRRRR - Whether to strip RRRR= prefix
+ * @param {string} role - Optional role for branch code conversion
  * @returns {Array<string>} Array of clean codes
  */
-function parseInput(text, stripRRRR = false) {
+function parseInput(text, stripRRRR = false, role = null) {
   if (!text || typeof text !== 'string') return [];
   
   // Split by spaces, newlines, commas, semicolons
@@ -252,7 +288,14 @@ function parseInput(text, stripRRRR = false) {
       code = code.substring(5);
     }
     
-    return code.toUpperCase();
+    code = code.toUpperCase();
+    
+    // Convert 3-digit codes to branch codes if role supports it
+    if (role && roleSupportsBranchCodes(role)) {
+      code = convertToBranchCode(code);
+    }
+    
+    return code;
   });
   
   // Filter out empty and ignored patterns
@@ -261,7 +304,7 @@ function parseInput(text, stripRRRR = false) {
     if (/^SNON\d+$/i.test(code)) return false;  // SNON123
     if (/^V0\d+/i.test(code)) return false;      // V0123
     if (code.includes('@')) return false;         // emails
-    if (/^\d+$/.test(code)) return false;         // pure numbers
+    // Don't filter pure numbers anymore - they're branch codes
     return true;
   });
   
@@ -278,7 +321,7 @@ function classifyCode(code) {
   code = code.toUpperCase();
   
   // Branch bundles
-  if (/^\*A(445|446|457|463)FC$/i.test(code)) {
+  if (/^\*A\d{3}FC$/i.test(code)) {
     return 'branch-bundle';
   }
   
@@ -416,7 +459,7 @@ function validateMatrix(addedCodes, role) {
   
   // 3. Check branch bundle restrictions
   const hasBranchBundle = addedCodes.some(code => 
-    /^\*A(445|446|457|463)FC$/i.test(code)
+    /^\*A\d{3}FC$/i.test(code)
   );
   
   details.branchBundle.found = hasBranchBundle;
@@ -628,13 +671,20 @@ function runAddComparison(role) {
     return;
   }
   
-  // Parse inputs
-  const requestedCodes = parseInput(servicenowText, false);
-  const addedCodes = parseInput(reflectionText, false);
+  // Parse inputs WITH role-based branch code conversion
+  const requestedCodes = parseInput(servicenowText, false, role);
+  const addedCodes = parseInput(reflectionText, false, role);
   
   // Separate IA codes from other codes in both lists
-  const requestedIA = requestedCodes.filter(code => classifyCode(code) === 'ia-code');
-  const addedIA = addedCodes.filter(code => classifyCode(code) === 'ia-code');
+  const requestedIA = requestedCodes.filter(code => {
+    const type = classifyCode(code);
+    return type === 'ia-code' || type === 'branch-bundle';
+  });
+  
+  const addedIA = addedCodes.filter(code => {
+    const type = classifyCode(code);
+    return type === 'ia-code' || type === 'branch-bundle';
+  });
   
   // Find matched, missing, and extra IA codes
   const matchedIA = requestedIA.filter(code => addedIA.includes(code));
@@ -651,7 +701,10 @@ function runAddComparison(role) {
   });
   
   // Get non-IA codes from added (matrix codes, etc.)
-  const nonIACodes = addedCodes.filter(code => classifyCode(code) !== 'ia-code');
+  const nonIACodes = addedCodes.filter(code => {
+    const type = classifyCode(code);
+    return type !== 'ia-code' && type !== 'branch-bundle';
+  });
   
   // Validate matrix requirements
   const validation = validateMatrix(addedCodes, role);
@@ -678,7 +731,12 @@ function runAddComparison(role) {
     role: role
   });
   
-  logActivity(`Add comparison completed for ${role}: ${matchedIA.length} matched, ${missingIA.length} missing`);
+  // Log with branch code conversion info if applicable
+  let logMsg = `Add comparison completed for ${role}: ${matchedIA.length} matched, ${missingIA.length} missing`;
+  if (roleSupportsBranchCodes(role)) {
+    logMsg += ' (with branch code conversion)';
+  }
+  logActivity(logMsg);
   showToast('Comparison complete', 'success');
 }
 
@@ -708,10 +766,10 @@ function runModifyComparison(role) {
     return;
   }
   
-  // Parse inputs
-  const requestedCodes = parseInput(servicenowText, false);
-  const deletedCodes = parseInput(deletedText, false);
-  const readdedCodes = parseInput(readdedText, false);
+  // Parse inputs WITH role-based branch code conversion
+  const requestedCodes = parseInput(servicenowText, false, role);
+  const deletedCodes = parseInput(deletedText, false, role);
+  const readdedCodes = parseInput(readdedText, false, role);
   
   // Check what was not re-added
   const notReadded = deletedCodes.filter(code => !readdedCodes.includes(code));
@@ -749,7 +807,11 @@ function runModifyComparison(role) {
     role: role
   });
   
-  logActivity(`Modify comparison completed for ${role}: ${notReadded.length} not re-added`);
+  let logMsg = `Modify comparison completed for ${role}: ${notReadded.length} not re-added`;
+  if (roleSupportsBranchCodes(role)) {
+    logMsg += ' (with branch code conversion)';
+  }
+  logActivity(logMsg);
   showToast('Comparison complete', 'success');
 }
 
@@ -842,7 +904,7 @@ function displayAddResults(results) {
   }
   
   // Render side-by-side comparison
-  renderSideBySideComparison(requestedCodes, allAddedCodes, matched, missing, extra);
+  renderSideBySideComparison(requestedCodes, allAddedCodes, matched, missing, extra, role);
   
   // Render matrix validation details
   renderMatrixValidation(validation, role, 'matrix-validation-details');
@@ -1025,7 +1087,7 @@ function displayBranchCheckerResults(duplicates, unique) {
 /**
  * Render side-by-side comparison for Add mode
  */
-function renderSideBySideComparison(requestedCodes, addedCodes, matched, missing, extra) {
+function renderSideBySideComparison(requestedCodes, addedCodes, matched, missing, extra, role) {
   const requestedList = document.getElementById('requested-codes-list');
   const addedList = document.getElementById('added-codes-list');
   
@@ -1085,6 +1147,21 @@ function renderSideBySideComparison(requestedCodes, addedCodes, matched, missing
     
     addedList.appendChild(item);
   });
+  
+  // Add note about branch code conversion if applicable
+  if (roleSupportsBranchCodes(role)) {
+    const note = document.createElement('div');
+    note.style.marginTop = '1rem';
+    note.style.padding = '0.5rem';
+    note.style.backgroundColor = 'rgba(124, 77, 255, 0.1)';
+    note.style.border = '1px solid var(--color-accent)';
+    note.style.borderRadius = 'var(--radius-sm)';
+    note.style.fontSize = '0.875rem';
+    note.style.color = 'var(--color-accent)';
+    note.innerHTML = '💡 3-digit codes automatically converted to *A###FC format for this role';
+    
+    requestedList.parentElement.insertBefore(note, requestedList.parentElement.firstChild);
+  }
 }
 
 /**
@@ -1261,6 +1338,127 @@ function renderErrorsAndWarnings(errors, warnings, errorsContainerId, warningsCo
 }
 
 // Continue to Part 4...
+// ============================================
+// MATRIX GUIDE FUNCTIONS
+// ============================================
+
+/**
+ * Update matrix guide display when role is selected
+ */
+function updateMatrixGuide() {
+  const role = document.getElementById('matrix-role-select').value;
+  const detailsDiv = document.getElementById('matrix-details');
+  
+  if (!role) {
+    detailsDiv.innerHTML = '<p class="empty-state">Select a role to view requirements</p>';
+    return;
+  }
+  
+  const config = ROLE_MATRIX[role];
+  if (!config) {
+    detailsDiv.innerHTML = '<p class="empty-state">No configuration found for this role</p>';
+    return;
+  }
+  
+  let html = '';
+  
+  // Role Requirements
+  html += `<div class="matrix-section">
+    <h3>Role Requirements</h3>
+    <p>Client 66 ${config.requires.client66 ? 'required' : 'not required'}</p>
+    <p>Client 72 ${config.requires.client72 ? 'required' : 'not required'}</p>
+  </div>`;
+  
+  // FUNC/SCON Configuration
+  html += `<div class="matrix-section">
+    <h3>FUNC/SCON Configuration</h3>`;
+  
+  if (config.func_scon['66'].FUNC) {
+    html += `<table class="matrix-table">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>FUNC</th>
+          <th>SCON</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>66</td>
+          <td><code>${config.func_scon['66'].FUNC}</code></td>
+          <td><code>${config.func_scon['66'].SCON}</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--color-text-muted);">(Defaulted)</p>`;
+  } else {
+    html += `<p>No FUNC/SCON requirements for this role</p>`;
+  }
+  
+  html += `</div>`;
+  
+  // FILE/MRGN Defaults
+  html += `<div class="matrix-section">
+    <h3>FILE/MRGN Defaults</h3>
+    <p>FILE: <code>${config.defaults.FILE}</code> (Defaulted)</p>
+    <p>MRGN: <code>${config.defaults.MRGN}</code> (Defaulted)</p>
+  </div>`;
+  
+  // RPTS Requirements
+  html += `<div class="matrix-section">
+    <h3>RPTS Requirements</h3>
+    <h4>Must include:</h4>
+    <ul>
+      <li>One WG base: <code>WGSTD</code>, <code>WGCOMMSTD</code>, <code>WGBRANCH</code>, <code>WGCOMPL</code></li>
+      <li>One regional: <code>REGA</code>, <code>REGB</code>, <code>REGC</code>, <code>REGD</code>, <code>REGE</code>, <code>REGF</code>, <code>REGALL</code></li>
+    </ul>`;
+  
+  if (config.allowBranchBundle) {
+    html += `<p>Note: When branch bundle (*A###FC) present, must include BRX### or BRX###FC</p>`;
+  }
+  
+  if (config.rpts.notes.length > 0) {
+    html += `<h4>Additional notes:</h4><ul>`;
+    config.rpts.notes.forEach(note => {
+      html += `<li>${note}</li>`;
+    });
+    html += `</ul>`;
+  }
+  
+  html += `</div>`;
+  
+  // Cheque Writing
+  html += `<div class="matrix-section">
+    <h3>Cheque Writing</h3>`;
+  
+  if (config.chequeWriting.allowed) {
+    html += `<p>Cheque writing <strong style="color: var(--color-success);">allowed</strong> for this role</p>
+    <p>Department: <code>${config.chequeWriting.dept}</code></p>
+    <p>Range: <code>${config.chequeWriting.range}</code></p>`;
+  } else {
+    html += `<p style="color: var(--color-error);">Cheque writing <strong>not allowed</strong> for this role</p>`;
+  }
+  
+  html += `</div>`;
+  
+  // Branch Code Support
+  if (roleSupportsBranchCodes(role)) {
+    html += `<div class="matrix-section">
+      <h3>Branch Code Support</h3>
+      <p style="color: var(--color-accent);">✓ This role supports automatic branch code conversion</p>
+      <p>3-digit codes (e.g., <code>417</code>) will automatically be converted to <code>*A417FC</code> format</p>
+    </div>`;
+  }
+  
+  // Additional Notes
+  html += `<div class="matrix-section">
+    <h3>Additional Notes</h3>
+    <p>• Branch bundles ${config.allowBranchBundle ? '<span style="color: var(--color-success);">allowed</span>' : '<span style="color: var(--color-error);">not allowed</span>'} for this role</p>
+  </div>`;
+  
+  detailsDiv.innerHTML = html;
+}
+
 // ============================================
 // MODAL FUNCTIONS
 // ============================================
@@ -1528,8 +1726,12 @@ function initializeApp() {
   
   // Header action buttons
   document.getElementById('btn-log').addEventListener('click', () => openModal('log-modal'));
+  document.getElementById('btn-matrix').addEventListener('click', () => openModal('matrix-modal'));
   document.getElementById('btn-options').addEventListener('click', () => openModal('options-modal'));
   document.getElementById('btn-guide').addEventListener('click', () => openModal('guide-modal'));
+  
+  // Matrix role selector
+  document.getElementById('matrix-role-select').addEventListener('change', updateMatrixGuide);
   
   // Modal close buttons
   document.querySelectorAll('.modal-close').forEach(btn => {
@@ -1592,7 +1794,8 @@ function initializeApp() {
   updateAllTokenCounts();
   
   console.log('✅ WG Access Comparator initialized successfully');
-  logActivity('Application started');
+  console.log('✨ NEW: Branch code conversion enabled for BA/Cage roles');
+  logActivity('Application started with branch code conversion support');
 }
 
 // Initialize when DOM is ready
@@ -1607,5 +1810,6 @@ if (document.readyState === 'loading') {
 // ============================================
 console.log('%c WG Access Comparator ', 'background: #7c4dff; color: white; font-size: 20px; padding: 10px;');
 console.log('%c Built by David Duke Essel - AQCM ', 'background: #2a2d36; color: #7c4dff; font-size: 14px; padding: 5px;');
-console.log('Version: 2.0');
-console.log('Features: Add, Modify, Monthly modes + Branch Checker');
+console.log('Version: 2.1');
+console.log('Features: Add, Modify, Monthly modes + Branch Checker + Matrix Guide + Branch Code Conversion');
+console.log('Branch Code Conversion: 3-digit codes (417) → *A417FC for BA/Cage roles');

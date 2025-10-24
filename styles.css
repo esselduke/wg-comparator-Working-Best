@@ -355,14 +355,64 @@ textarea::placeholder {
 }
 
 /* ============================================
+   COLLAPSIBLE SECTION
+   ============================================ */
+.collapsible-section {
+    cursor: pointer;
+}
+
+.collapsible-section summary {
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md);
+    background-color: var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    color: var(--color-info);
+    transition: var(--transition);
+    user-select: none;
+}
+
+.collapsible-section summary::-webkit-details-marker {
+    display: none;
+}
+
+.collapsible-section summary:hover {
+    background-color: var(--color-bg-elevated);
+}
+
+.summary-icon {
+    transition: transform 0.3s ease;
+    font-size: 0.875rem;
+}
+
+.collapsible-section[open] .summary-icon {
+    transform: rotate(-180deg);
+}
+
+.collapsible-content {
+    padding-top: var(--space-lg);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
    BRANCH CHECKER
    ============================================ */
 #branch-checker-section {
     border: 2px solid var(--color-info);
-}
-
-#branch-checker-section h2 {
-    color: var(--color-info);
 }
 
 .branch-checker-inputs {
@@ -388,6 +438,16 @@ textarea::placeholder {
     padding: var(--space-md);
     background-color: var(--color-bg-tertiary);
     border-radius: var(--radius-md);
+}
+
+.code-chip {
+    display: inline-block;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-family: var(--font-family-mono);
+    font-weight: 600;
+    border: 1px solid;
 }
 
 /* ============================================
@@ -801,6 +861,105 @@ textarea::placeholder {
 .modal-body::-webkit-scrollbar-thumb {
     background: var(--color-border);
     border-radius: var(--radius-sm);
+}
+
+/* ============================================
+   MATRIX GUIDE MODAL
+   ============================================ */
+.matrix-selector {
+    margin-bottom: var(--space-xl);
+    padding: var(--space-lg);
+    background-color: var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-accent);
+}
+
+.matrix-selector label {
+    display: block;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-sm);
+}
+
+#matrix-role-select {
+    width: 100%;
+    background-color: var(--color-bg-elevated);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    font-size: var(--font-size-base);
+    cursor: pointer;
+}
+
+.matrix-details {
+    background-color: var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+}
+
+.matrix-section {
+    margin-bottom: var(--space-lg);
+    padding: var(--space-lg);
+    background-color: var(--color-bg-elevated);
+    border-left: 4px solid var(--color-accent);
+    border-radius: var(--radius-sm);
+}
+
+.matrix-section h3 {
+    color: var(--color-accent);
+    margin-bottom: var(--space-md);
+    font-size: var(--font-size-lg);
+}
+
+.matrix-section h4 {
+    color: var(--color-text-secondary);
+    margin-top: var(--space-md);
+    margin-bottom: var(--space-sm);
+    font-size: var(--font-size-base);
+}
+
+.matrix-section p,
+.matrix-section ul,
+.matrix-section table {
+    margin-bottom: var(--space-md);
+    color: var(--color-text-secondary);
+}
+
+.matrix-section ul {
+    margin-left: var(--space-lg);
+}
+
+.matrix-section code {
+    background-color: var(--color-bg-primary);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-family-mono);
+    color: var(--color-accent);
+    font-size: 0.9em;
+}
+
+.matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--space-md);
+}
+
+.matrix-table th,
+.matrix-table td {
+    padding: var(--space-sm) var(--space-md);
+    text-align: left;
+    border: 1px solid var(--color-border);
+}
+
+.matrix-table th {
+    background-color: var(--color-bg-primary);
+    color: var(--color-accent);
+    font-weight: 600;
+}
+
+.matrix-table code {
+    background-color: var(--color-bg-tertiary);
 }
 
 /* Options Modal */

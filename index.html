@@ -22,6 +22,9 @@
                     <button id="btn-log" class="btn-icon" title="View Activity Log">
                         <span>📋</span> Log
                     </button>
+                    <button id="btn-matrix" class="btn-icon" title="Role & Matrix Guide">
+                        <span>📊</span> Matrix
+                    </button>
                     <button id="btn-options" class="btn-icon" title="Options">
                         <span>⚙️</span> Options
                     </button>
@@ -188,44 +191,51 @@ REGA"></textarea>
 
             </section>
 
-            <!-- Branch Code Duplicate Checker (Separate Tool) -->
+            <!-- Branch Code Duplicate Checker (Collapsible) -->
             <section id="branch-checker-section" class="input-panel">
-                <h2>🔍 Branch Code Duplicate Checker</h2>
-                <p class="info-text">Check if specific codes already exist in branch bundles (independent of main comparison)</p>
-                
-                <div class="branch-checker-inputs">
-                    <div class="input-group">
-                        <label for="branch-bundle-codes">
-                            Branch Bundle Contents
-                            <span class="help-text">Paste all codes from branch bundles (*A331FC, etc.)</span>
-                        </label>
-                        <textarea 
-                            id="branch-bundle-codes" 
-                            rows="8" 
-                            placeholder="DX2 DX7 ABC DEF ..."></textarea>
-                        <small class="token-count" id="branch-bundle-count">0 codes</small>
+                <details class="collapsible-section">
+                    <summary>
+                        <span>🔍 Branch Code Duplicate Checker (Optional)</span>
+                        <span class="summary-icon">▼</span>
+                    </summary>
+                    <div class="collapsible-content">
+                        <p class="info-text">Check if specific codes already exist in branch bundles (independent of main comparison)</p>
+                        
+                        <div class="branch-checker-inputs">
+                            <div class="input-group">
+                                <label for="branch-bundle-codes">
+                                    Branch Bundle Contents
+                                    <span class="help-text">Paste all codes from branch bundles (*A331FC, etc.)</span>
+                                </label>
+                                <textarea 
+                                    id="branch-bundle-codes" 
+                                    rows="8" 
+                                    placeholder="DX2 DX7 ABC DEF ..."></textarea>
+                                <small class="token-count" id="branch-bundle-count">0 codes</small>
+                            </div>
+
+                            <div class="input-group">
+                                <label for="codes-to-check">
+                                    Codes to Check
+                                    <span class="help-text">Paste codes you want to check for duplicates</span>
+                                </label>
+                                <textarea 
+                                    id="codes-to-check" 
+                                    rows="6" 
+                                    placeholder="DX2 DX7 DX5 ..."></textarea>
+                                <small class="token-count" id="codes-check-count">0 codes</small>
+                            </div>
+
+                            <button id="btn-check-branch" class="btn btn-primary">Check Duplicates</button>
+                        </div>
+
+                        <div id="branch-checker-results" style="display: none; margin-top: 1.5rem;">
+                            <h3>Branch Duplicate Results:</h3>
+                            <div id="branch-duplicates-list"></div>
+                            <div id="branch-unique-list"></div>
+                        </div>
                     </div>
-
-                    <div class="input-group">
-                        <label for="codes-to-check">
-                            Codes to Check
-                            <span class="help-text">Paste codes you want to check for duplicates</span>
-                        </label>
-                        <textarea 
-                            id="codes-to-check" 
-                            rows="6" 
-                            placeholder="DX2 DX7 DX5 ..."></textarea>
-                        <small class="token-count" id="codes-check-count">0 codes</small>
-                    </div>
-
-                    <button id="btn-check-branch" class="btn btn-primary">Check Duplicates</button>
-                </div>
-
-                <div id="branch-checker-results" style="display: none; margin-top: 1.5rem;">
-                    <h3>Branch Duplicate Results:</h3>
-                    <div id="branch-duplicates-list"></div>
-                    <div id="branch-unique-list"></div>
-                </div>
+                </details>
             </section>
 
             <!-- Results Section -->
@@ -404,6 +414,39 @@ REGA"></textarea>
             </div>
         </div>
 
+        <!-- Matrix Guide Modal -->
+        <div id="matrix-modal" class="modal">
+            <div class="modal-content modal-wide">
+                <div class="modal-header">
+                    <h2>📊 Role & Matrix Guide</h2>
+                    <button class="modal-close" data-modal="matrix-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="matrix-selector">
+                        <label for="matrix-role-select">Select Role:</label>
+                        <select id="matrix-role-select">
+                            <option value="">-- Select a Role --</option>
+                            <option value="SA PROFILE">SA PROFILE</option>
+                            <option value="SA WITH TRANSIT & SYND. PROFILE">SA WITH TRANSIT & SYND. PROFILE</option>
+                            <option value="SA WITH SYNDICATE PROFILE">SA WITH SYNDICATE PROFILE</option>
+                            <option value="IA PROFILE">IA PROFILE</option>
+                            <option value="ASSOCIATE IA PROFILE">ASSOCIATE IA PROFILE</option>
+                            <option value="Branch Assistant & Cage Profile">Branch Assistant & Cage Profile</option>
+                            <option value="BA & CAGE INQUIRY">BA & CAGE INQUIRY</option>
+                            <option value="BA/ABM/BM and Backup">BA/ABM/BM and Backup</option>
+                            <option value="BA ABM BM AND BACKUP PROFILE">BA ABM BM AND BACKUP PROFILE</option>
+                            <option value="BA/ABM/BM ACWS INQUIRY">BA/ABM/BM ACWS INQUIRY</option>
+                            <option value="INQUIRY ONLY - BRANCH ASSISTANT AND CAGE PROFILE - Secondary Role">INQUIRY ONLY - Secondary Role</option>
+                        </select>
+                    </div>
+                    
+                    <div id="matrix-details" class="matrix-details">
+                        <p class="empty-state">Select a role to view requirements</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Options Modal -->
         <div id="options-modal" class="modal">
             <div class="modal-content">
@@ -434,7 +477,7 @@ REGA"></textarea>
             </div>
         </div>
 
-        <!-- Guide Modal -->
+        <!-- User Guide Modal -->
         <div id="guide-modal" class="modal">
             <div class="modal-content modal-wide">
                 <div class="modal-header">
@@ -495,6 +538,7 @@ REGA"></textarea>
                         <h3>Branch Code Checker</h3>
                         <p>Separate tool to check duplicates:</p>
                         <ol>
+                            <li>Expand the Branch Code Checker section</li>
                             <li>Paste branch bundle contents</li>
                             <li>Paste codes to check</li>
                             <li>Click "Check Duplicates"</li>
@@ -509,6 +553,7 @@ REGA"></textarea>
                             <li>Export results to CSV for records</li>
                             <li>Check Activity Log for history</li>
                             <li>Side-by-side view mimics Excel workflow exactly</li>
+                            <li>Branch code conversion: 3-digit codes (417) auto-convert to *A417FC for BA/Cage roles</li>
                         </ul>
                     </div>
                 </div>
