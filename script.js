@@ -1158,7 +1158,7 @@ function renderSideBySideComparison(requestedCodes, addedCodes, matched, missing
     note.style.borderRadius = 'var(--radius-sm)';
     note.style.fontSize = '0.875rem';
     note.style.color = 'var(--color-accent)';
-    note.innerHTML = '💡 3-digit codes automatically converted to *A###FC format for this role';
+    note.innerHTML = '💡 3-digit branch codes automatically converted to *A###FC format for this role';
     
     requestedList.parentElement.insertBefore(note, requestedList.parentElement.firstChild);
   }
