@@ -1,10 +1,12 @@
 /**
- * WG Access Comparator - Application Logic
+ * WG Access Comparator v3.0 - Application Logic
  * Built by David Duke Essel · AQCM
  * 
- * Complete validation tool for Wood Gundy access management
- * Supports Add, Modify, and Monthly workflows with full feature set
- * NOW WITH: Branch code conversion (3-digit → *A###FC) for BA/Cage roles
+ * COMPLETE MULTI-SYSTEM SUPPORT:
+ * - TOPS: Full matrix validation
+ * - Postedge: RRRR for FUNC, no SCON
+ * - Fee Aggregator: Knowledge Base requirements
+ * - VPS (Global Framework): Knowledge Base requirements
  */
 
 // ============================================
@@ -16,6 +18,43 @@ const appState = {
         autoScroll: true,
         showStats: true,
         logActivity: true
+    },
+    branchCodeNotificationShown: false  // Track if notification already shown
+};
+
+// ============================================
+// SYSTEM CONFIGURATIONS
+// ============================================
+const SYSTEMS = {
+    TOPS: {
+        name: 'TOPS',
+        supportsModify: true,
+        requiresRole: true,
+        validationType: 'matrix'
+    },
+    Postedge: {
+        name: 'Postedge',
+        supportsModify: false,
+        requiresRole: true,
+        validationType: 'matrix',
+        funcOverride: 'RRRR',
+        noScon: true
+    },
+    FeeAggregator: {
+        name: 'Fee Aggregator',
+        supportsModify: false,
+        requiresRole: false,
+        validationType: 'knowledgeBase',
+        requiredCodes: ['*WGDFAR', '*FEAGFUNC'],
+        description: 'MRGN + IA codes + *FEAGFUNC'
+    },
+    VPS: {
+        name: 'VPS (Global Framework)',
+        supportsModify: false,
+        requiresRole: false,
+        validationType: 'knowledgeBase',
+        requiredFunc: '*VPSWGFUNC',
+        description: 'IA codes + *VPSWGFUNC + branch codes as MRGN'
     }
 };
 
@@ -33,20 +72,15 @@ const BRANCH_CODE_ROLES = [
 
 /**
  * Check if a role supports branch codes
- * @param {string} role - Role name
- * @returns {boolean}
  */
 function roleSupportsBranchCodes(role) {
     return BRANCH_CODE_ROLES.includes(role);
 }
 
 /**
- * Convert 3-digit code to branch code format
- * @param {string} code - Code to check (e.g., "417")
- * @returns {string} - Converted code (e.g., "*A417FC") or original
+ * Convert 3-digit code to branch code format (*A###FC)
  */
 function convertToBranchCode(code) {
-    // Check if code is exactly 3 digits
     if (/^\d{3}$/.test(code)) {
         return `*A${code}FC`;
     }
@@ -54,7 +88,7 @@ function convertToBranchCode(code) {
 }
 
 // ============================================
-// ROLE MATRIX CONFIGURATION
+// ROLE MATRIX CONFIGURATION WITH LEVELS
 // ============================================
 const ROLE_MATRIX = {
   "BA & CAGE INQUIRY": {
@@ -65,10 +99,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: "*ICAGEFUNC", SCON: "*SICAGESCON" },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: ["Add WGBRANCH in RPTS"],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: "WGBRANCH"
     },
     chequeWriting: { allowed: false }
   },
@@ -81,10 +119,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: "*BRMGTFUNC", SCON: "*SBRMGTSCON" },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: ["Add WGBRANCH in RPTS"],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: "WGBRANCH"
     },
     chequeWriting: {
       allowed: true,
@@ -101,10 +143,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: "*CAGEFUNC", SCON: "*SCAGESCON" },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: ["Add WGBRANCH in RPTS"],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: "WGBRANCH"
     },
     chequeWriting: {
       allowed: true,
@@ -121,10 +167,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: "*IAFUNC", SCON: "*IASCON" },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: [],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: null  // No specific requirement - any base RPTS is fine
     },
     chequeWriting: { allowed: false }
   },
@@ -137,10 +187,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: "*AIAFUNC", SCON: "*AIASCON" },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: [],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: null
     },
     chequeWriting: {
       allowed: true,
@@ -157,10 +211,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: "*SATRSYFUNC", SCON: "*SATRSYSCON" },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: [],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: null
     },
     chequeWriting: {
       allowed: true,
@@ -177,10 +235,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: "*SASYNBFUNC", SCON: "*SASYNBSCON" },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: [],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: null
     },
     chequeWriting: {
       allowed: true,
@@ -197,10 +259,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: "*SAFUNC", SCON: "*SASCON" },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: [],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: null
     },
     chequeWriting: {
       allowed: true,
@@ -217,10 +283,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: null, SCON: null },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: ["Add WGBRANCH in RPTS"],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: "WGBRANCH"
     },
     chequeWriting: { allowed: false }
   },
@@ -233,10 +303,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: null, SCON: null },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: ["Add WGBRANCH in RPTS"],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: "WGBRANCH"
     },
     chequeWriting: { allowed: false }
   },
@@ -249,10 +323,14 @@ const ROLE_MATRIX = {
       "66": { FUNC: "*BRMGTFUNC", SCON: "*SBRMGTSCON" },
       "72": { FUNC: null, SCON: null }
     },
+    levels: {
+      R: 1, C: 1, V: null, O: 1, I: 1, F: 2, B: 1, M: null, P: 1
+    },
     rpts: {
       notes: ["Add WGBRANCH in RPTS"],
       baseRequired: true,
-      regionalRequired: true
+      regionalRequired: true,
+      specificBase: "WGBRANCH"
     },
     chequeWriting: {
       allowed: true,
@@ -268,54 +346,42 @@ const ROLE_MATRIX = {
 
 /**
  * Parse input text into array of clean codes
- * @param {string} text - Raw input text
- * @param {boolean} stripRRRR - Whether to strip RRRR= prefix
- * @param {string} role - Optional role for branch code conversion
- * @returns {Array<string>} Array of clean codes
  */
-function parseInput(text, stripRRRR = false, role = null) {
+function parseInput(text, stripRRRR = false, role = null, system = 'TOPS') {
   if (!text || typeof text !== 'string') return [];
   
-  // Split by spaces, newlines, commas, semicolons
   let codes = text.split(/[\s\n\r,;]+/);
   
-  // Clean each code
   codes = codes.map(code => {
     code = code.trim();
     
-    // Strip RRRR= prefix if needed (Monthly mode)
     if (stripRRRR && code.toUpperCase().startsWith('RRRR=')) {
       code = code.substring(5);
     }
     
     code = code.toUpperCase();
     
-    // Convert 3-digit codes to branch codes if role supports it
-    if (role && roleSupportsBranchCodes(role)) {
+    // Branch code conversion for TOPS/Postedge with BA/Cage roles
+    if ((system === 'TOPS' || system === 'Postedge') && role && roleSupportsBranchCodes(role)) {
       code = convertToBranchCode(code);
     }
     
     return code;
   });
   
-  // Filter out empty and ignored patterns
   codes = codes.filter(code => {
     if (!code) return false;
-    if (/^SNON\d+$/i.test(code)) return false;  // SNON123
-    if (/^V0\d+/i.test(code)) return false;      // V0123
-    if (code.includes('@')) return false;         // emails
-    // Don't filter pure numbers anymore - they're branch codes
+    if (/^SNON\d+$/i.test(code)) return false;
+    if (/^V0\d+/i.test(code)) return false;
+    if (code.includes('@')) return false;
     return true;
   });
   
-  // Remove duplicates
   return [...new Set(codes)];
 }
 
 /**
  * Classify a code by type
- * @param {string} code - Code to classify
- * @returns {string} Code type
  */
 function classifyCode(code) {
   code = code.toUpperCase();
@@ -346,7 +412,7 @@ function classifyCode(code) {
     '*AIAFUNC', '*AIASCON', '*SATRSYFUNC', '*SATRSYSCON',
     '*SASYNBFUNC', '*SASYNBSCON', '*BRMGTFUNC', '*SBRMGTSCON',
     '*CAGEFUNC', '*SCAGESCON', '*ICAGEFUNC', '*SICAGESCON',
-    '*CAGESCON'
+    '*CAGESCON', 'RRRR', '*FEAGFUNC', '*VPSWGFUNC'
   ];
   if (funcMarkers.includes(code)) {
     return 'func-scon';
@@ -357,53 +423,109 @@ function classifyCode(code) {
     return 'default-file';
   }
   
-  // Default: IA code
+  // 3-digit codes (branch codes in VPS)
+  if (/^\d{3}$/.test(code)) {
+    return 'branch-code';
+  }
+  
   return 'ia-code';
 }
 
 /**
- * Detect if code is an INS code
- * @param {string} code - Code to check
- * @returns {Object} { isINS: boolean, reason: string }
+ * Detect if code is likely INS/MIR
  */
-function detectINS(code) {
+function detectINSMIR(code) {
   code = code.toUpperCase();
+  
+  // Codes starting with A, B, or R (followed by digits)
+  if (/^[ABR]\d+$/i.test(code)) {
+    return {
+      isINSMIR: true,
+      reason: 'likely INS/MIR'
+    };
+  }
   
   // Known INS codes
   const knownINS = ['RRU', 'A15', 'B22', 'R03', 'INS', 'MIRACLE'];
   if (knownINS.includes(code)) {
     return {
-      isINS: true,
+      isINSMIR: true,
       reason: 'Known INS code'
-    };
-  }
-  
-  // Pattern: Letter + 2 digits (A15, B22, R03)
-  if (/^[ABR]\d{2}$/i.test(code)) {
-    return {
-      isINS: true,
-      reason: 'INS pattern (Letter+2 digits)'
     };
   }
   
   // Contains INS or MIRACLE
   if (/INS|MIRACLE/i.test(code)) {
     return {
-      isINS: true,
+      isINSMIR: true,
       reason: 'Contains INS/MIRACLE'
     };
   }
   
-  return { isINS: false };
+  return { isINSMIR: false };
 }
 
 /**
- * Validate matrix requirements
- * @param {Array<string>} addedCodes - All codes that were added
- * @param {string} role - Selected role
- * @returns {Object} { errors: [], warnings: [], details: {} }
+ * Update token count for a textarea
  */
-function validateMatrix(addedCodes, role) {
+function updateTokenCount(textareaId, countId) {
+  const textarea = document.getElementById(textareaId);
+  const countEl = document.getElementById(countId);
+  
+  if (!textarea || !countEl) return;
+  
+  const text = textarea.value;
+  const codes = parseInput(text, false);
+  countEl.textContent = `${codes.length} code${codes.length !== 1 ? 's' : ''}`;
+}
+
+/**
+ * Show toast notification
+ */
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.classList.add('hiding');
+    setTimeout(() => {
+      if (container.contains(toast)) {
+        container.removeChild(toast);
+      }
+    }, 300);
+  }, 3000);
+}
+
+/**
+ * Log activity
+ */
+function logActivity(message) {
+  if (!appState.options.logActivity) return;
+  
+  const timestamp = new Date().toLocaleString();
+  appState.activityLog.unshift({
+    time: timestamp,
+    message: message
+  });
+  
+  if (appState.activityLog.length > 50) {
+    appState.activityLog = appState.activityLog.slice(0, 50);
+  }
+}
+
+// ============================================
+// VALIDATION FUNCTIONS
+// ============================================
+
+/**
+ * Validate matrix requirements for TOPS/Postedge
+ */
+function validateMatrix(addedCodes, role, system) {
   const config = ROLE_MATRIX[role];
   if (!config) {
     return { errors: [], warnings: [], details: {} };
@@ -413,29 +535,44 @@ function validateMatrix(addedCodes, role) {
   const warnings = [];
   const details = {
     funcScon: { required: [], found: [], missing: [] },
-    rpts: { base: null, regional: null, notes: [] },
-    branchBundle: { allowed: config.allowBranchBundle, found: false }
+    rpts: { base: null, regional: null, notes: [], specificBase: config.rpts.specificBase },
+    branchBundle: { allowed: config.allowBranchBundle, found: false },
+    levels: config.levels
   };
   
   // 1. Check FUNC/SCON requirements
-  if (config.requires.client66 && config.func_scon['66'].FUNC) {
-    const requiredFunc = config.func_scon['66'].FUNC;
-    const requiredScon = config.func_scon['66'].SCON;
-    
-    details.funcScon.required.push(requiredFunc, requiredScon);
-    
-    if (addedCodes.includes(requiredFunc)) {
-      details.funcScon.found.push(requiredFunc);
+  if (system === 'Postedge') {
+    // Postedge: Check for RRRR, no SCON needed
+    if (addedCodes.includes('RRRR')) {
+      details.funcScon.found.push('RRRR');
     } else {
-      details.funcScon.missing.push(requiredFunc);
-      errors.push(`Missing required FUNC: ${requiredFunc}`);
+      errors.push('Missing required FUNC: RRRR (Postedge)');
     }
-    
-    if (addedCodes.includes(requiredScon)) {
-      details.funcScon.found.push(requiredScon);
-    } else {
-      details.funcScon.missing.push(requiredScon);
-      errors.push(`Missing required SCON: ${requiredScon}`);
+  } else {
+    // TOPS: Normal FUNC/SCON validation
+    if (config.requires.client66 && config.func_scon['66'].FUNC) {
+      const requiredFunc = config.func_scon['66'].FUNC;
+      const requiredScon = config.func_scon['66'].SCON;
+      
+      details.funcScon.required.push(requiredFunc);
+      
+      if (addedCodes.includes(requiredFunc)) {
+        details.funcScon.found.push(requiredFunc);
+        
+        // SCON is auto-defaulted if FUNC is correct
+        if (requiredScon) {
+          details.funcScon.required.push(requiredScon);
+          if (addedCodes.includes(requiredScon)) {
+            details.funcScon.found.push(requiredScon);
+          } else {
+            // Don't error - SCON is auto-defaulted
+            details.funcScon.found.push(requiredScon + ' (auto-defaulted)');
+          }
+        }
+      } else {
+        details.funcScon.missing.push(requiredFunc);
+        errors.push(`Missing required FUNC: ${requiredFunc}`);
+      }
     }
   }
   
@@ -443,18 +580,40 @@ function validateMatrix(addedCodes, role) {
   const rptsBase = ['WGSTD', 'WGCOMMSTD', 'WGBRANCH', 'WGCOMPL'];
   const rptsRegional = ['REGA', 'REGB', 'REGC', 'REGD', 'REGE', 'REGF', 'REGALL'];
   
-  const foundBase = addedCodes.find(code => rptsBase.includes(code));
+  const foundBases = addedCodes.filter(code => rptsBase.includes(code));
   const foundRegional = addedCodes.find(code => rptsRegional.includes(code));
   
-  details.rpts.base = foundBase || null;
+  // Check for duplicate base RPTS
+  if (foundBases.length > 1) {
+    errors.push(`Multiple base RPTS codes found: ${foundBases.join(', ')}. Only one allowed.`);
+  }
+  
+  const foundBase = foundBases[0] || null;
+  details.rpts.base = foundBase;
   details.rpts.regional = foundRegional || null;
   
   if (config.rpts.baseRequired && !foundBase) {
-    errors.push('Missing base RPTS code (need WGSTD, WGCOMMSTD, WGBRANCH, or WGCOMPL)');
+    if (config.rpts.specificBase) {
+      errors.push(`Missing required base RPTS: ${config.rpts.specificBase}`);
+    } else {
+      errors.push('Missing base RPTS code (need WGSTD, WGCOMMSTD, WGBRANCH, or WGCOMPL)');
+    }
+  }
+  
+  // Check if wrong base RPTS used
+  if (config.rpts.specificBase && foundBase && foundBase !== config.rpts.specificBase) {
+    errors.push(`Wrong base RPTS: found ${foundBase}, but ${config.rpts.specificBase} is required for this role`);
+    details.rpts.wrongBase = true;
   }
   
   if (config.rpts.regionalRequired && !foundRegional) {
     errors.push('Missing regional RPTS code (need REGA-REGF or REGALL)');
+  }
+  
+  // Check for duplicate regional RPTS
+  const foundRegionals = addedCodes.filter(code => rptsRegional.includes(code));
+  if (foundRegionals.length > 1) {
+    errors.push(`Multiple regional RPTS codes found: ${foundRegionals.join(', ')}. Only one allowed.`);
   }
   
   // 3. Check branch bundle restrictions
@@ -471,89 +630,156 @@ function validateMatrix(addedCodes, role) {
   // 4. Check matrix notes
   if (config.rpts.notes.length > 0) {
     details.rpts.notes = config.rpts.notes;
-    
-    for (const note of config.rpts.notes) {
-      if (note.includes('Add WGBRANCH')) {
-        if (!addedCodes.includes('WGBRANCH')) {
-          warnings.push('Matrix note: Add WGBRANCH in RPTS');
-        }
-      }
-    }
   }
   
   return { errors, warnings, details };
 }
 
 /**
- * Update token count for a textarea
- * @param {string} textareaId - ID of textarea
- * @param {string} countId - ID of count element
+ * Validate Fee Aggregator requirements (Knowledge Base)
  */
-function updateTokenCount(textareaId, countId) {
-  const textarea = document.getElementById(textareaId);
-  const countEl = document.getElementById(countId);
+function validateFeeAggregator(addedCodes, requestedCodes) {
+  const errors = [];
+  const warnings = [];
+  const details = {
+    requiredCodes: ['*WGDFAR', '*FEAGFUNC'],
+    found: [],
+    missing: []
+  };
   
-  if (!textarea || !countEl) return;
-  
-  const text = textarea.value;
-  const codes = parseInput(text, false);
-  countEl.textContent = `${codes.length} code${codes.length !== 1 ? 's' : ''}`;
-}
-
-/**
- * Show toast notification
- * @param {string} message - Message to display
- * @param {string} type - Type: success, error, warning, info
- */
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toast-container');
-  
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.textContent = message;
-  
-  container.appendChild(toast);
-  
-  // Auto-dismiss after 3 seconds
-  setTimeout(() => {
-    toast.classList.add('hiding');
-    setTimeout(() => {
-      if (container.contains(toast)) {
-        container.removeChild(toast);
-      }
-    }, 300);
-  }, 3000);
-}
-
-/**
- * Log activity
- * @param {string} message - Activity message
- */
-function logActivity(message) {
-  if (!appState.options.logActivity) return;
-  
-  const timestamp = new Date().toLocaleString();
-  appState.activityLog.unshift({
-    time: timestamp,
-    message: message
-  });
-  
-  // Keep only last 50 entries
-  if (appState.activityLog.length > 50) {
-    appState.activityLog = appState.activityLog.slice(0, 50);
+  // Check for required codes
+  if (addedCodes.includes('*WGDFAR')) {
+    details.found.push('*WGDFAR');
+  } else {
+    details.missing.push('*WGDFAR');
+    errors.push('Missing required MRGN: *WGDFAR');
   }
+  
+  if (addedCodes.includes('*FEAGFUNC')) {
+    details.found.push('*FEAGFUNC');
+  } else {
+    details.missing.push('*FEAGFUNC');
+    errors.push('Missing required FUNC: *FEAGFUNC');
+  }
+  
+  // All IA codes should be in both requested and added
+  const iaCodes = addedCodes.filter(code => classifyCode(code) === 'ia-code');
+  const requestedIA = requestedCodes.filter(code => classifyCode(code) === 'ia-code');
+  
+  const missingIA = requestedIA.filter(code => !iaCodes.includes(code));
+  if (missingIA.length > 0) {
+    errors.push(`Missing requested IA codes: ${missingIA.join(', ')}`);
+  }
+  
+  return { errors, warnings, details };
 }
 
-// Continue to Part 2...
+/**
+ * Validate VPS requirements (Knowledge Base)
+ */
+function validateVPS(addedCodes, requestedCodes) {
+  const errors = [];
+  const warnings = [];
+  const details = {
+    requiredFunc: '*VPSWGFUNC',
+    funcFound: false,
+    branchCodes: [],
+    mrgnCodes: []
+  };
+  
+  // Check for *VPSWGFUNC
+  if (addedCodes.includes('*VPSWGFUNC')) {
+    details.funcFound = true;
+  } else {
+    errors.push('Missing required FUNC: *VPSWGFUNC');
+  }
+  
+  // Check for branch bundles and corresponding MRGN
+  const branchBundles = addedCodes.filter(code => /^\*A\d{3}FC$/i.test(code));
+  
+  if (branchBundles.length > 0) {
+    branchBundles.forEach(bundle => {
+      // Extract branch number (e.g., *A311FC -> 311)
+      const match = bundle.match(/^\*A(\d{3})FC$/i);
+      if (match) {
+        const branchNum = match[1];
+        details.branchCodes.push(branchNum);
+        
+        // Check if corresponding MRGN exists
+        if (!addedCodes.includes(branchNum)) {
+          errors.push(`Branch bundle ${bundle} requires MRGN: ${branchNum}`);
+        } else {
+          details.mrgnCodes.push(branchNum);
+        }
+      }
+    });
+  }
+  
+  // Check IA codes
+  const iaCodes = addedCodes.filter(code => classifyCode(code) === 'ia-code');
+  const requestedIA = requestedCodes.filter(code => classifyCode(code) === 'ia-code');
+  
+  const missingIA = requestedIA.filter(code => !iaCodes.includes(code));
+  if (missingIA.length > 0) {
+    errors.push(`Missing requested IA codes: ${missingIA.join(', ')}`);
+  }
+  
+  return { errors, warnings, details };
+}
+
 // ============================================
 // EVENT HANDLERS
 // ============================================
+
+/**
+ * Handle system change
+ */
+function onSystemChange() {
+  const system = document.getElementById('system-select').value;
+  const systemConfig = SYSTEMS[system];
+  const mode = document.getElementById('mode-select').value;
+  
+  // Update role visibility
+  const roleGroup = document.getElementById('role-group');
+  if (systemConfig.requiresRole && mode !== 'Monthly') {
+    roleGroup.style.display = 'flex';
+  } else {
+    roleGroup.style.display = 'none';
+  }
+  
+  // Update mode availability
+  const modeSelect = document.getElementById('mode-select');
+  const modifyOption = modeSelect.querySelector('option[value="Modify"]');
+  
+  if (!systemConfig.supportsModify) {
+    modifyOption.disabled = true;
+    if (mode === 'Modify') {
+      modeSelect.value = 'Add';
+      onModeChange();
+    }
+  } else {
+    modifyOption.disabled = false;
+  }
+  
+  // Update title
+  const addModeTitle = document.getElementById('add-mode-title');
+  if (addModeTitle) {
+    addModeTitle.textContent = `Add Mode - New User (${systemConfig.name})`;
+  }
+  
+  // Reset branch code notification
+  appState.branchCodeNotificationShown = false;
+  
+  logActivity(`Switched to ${systemConfig.name} system`);
+}
 
 /**
  * Handle mode change
  */
 function onModeChange() {
   const mode = document.getElementById('mode-select').value;
+  const system = document.getElementById('system-select').value;
+  const systemConfig = SYSTEMS[system];
   
   // Hide all mode inputs
   document.getElementById('add-inputs').style.display = 'none';
@@ -574,7 +800,7 @@ function onModeChange() {
   
   // Update role requirement visibility
   const roleGroup = document.getElementById('role-group');
-  if (mode === 'Monthly') {
+  if (mode === 'Monthly' || !systemConfig.requiresRole) {
     roleGroup.style.display = 'none';
   } else {
     roleGroup.style.display = 'flex';
@@ -585,17 +811,17 @@ function onModeChange() {
  * Clear all inputs and results
  */
 function clearAll() {
-  // Clear all textareas
   const textareas = document.querySelectorAll('textarea');
   textareas.forEach(ta => {
     ta.value = '';
   });
   
-  // Update all token counts
   updateAllTokenCounts();
   
-  // Hide results
   document.getElementById('results-section').style.display = 'none';
+  
+  // Reset branch code notification
+  appState.branchCodeNotificationShown = false;
   
   showToast('All fields cleared', 'info');
   logActivity('Cleared all fields');
@@ -612,7 +838,7 @@ function updateAllTokenCounts() {
     ['modify-deleted', 'modify-deleted-count'],
     ['modify-readded', 'modify-readded-count'],
     ['monthly-excel', 'monthly-excel-count'],
-    ['monthly-tracker', 'monthly-tracker-count'],
+    ['monthly-servicenow', 'monthly-servicenow-count'],
     ['branch-bundle-codes', 'branch-bundle-count'],
     ['codes-to-check', 'codes-check-count']
   ];
@@ -631,36 +857,32 @@ function updateAllTokenCounts() {
  */
 function onCompare() {
   const mode = document.getElementById('mode-select').value;
+  const system = document.getElementById('system-select').value;
   const role = document.getElementById('role-select').value;
+  const systemConfig = SYSTEMS[system];
   
   // Validate inputs
+  if (systemConfig.requiresRole && mode !== 'Monthly' && !role) {
+    showToast('Please select a role', 'error');
+    return;
+  }
+  
   if (mode === 'Monthly') {
     runMonthlyComparison();
-  } else {
-    // Add or Modify mode
-    if (!role) {
-      showToast('Please select a role', 'error');
-      return;
-    }
-    
-    if (mode === 'Add') {
-      runAddComparison(role);
-    } else if (mode === 'Modify') {
-      runModifyComparison(role);
-    }
+  } else if (mode === 'Add') {
+    runAddComparison(system, role);
+  } else if (mode === 'Modify') {
+    runModifyComparison(system, role);
   }
 }
 
 /**
  * Run Add mode comparison
- * @param {string} role - Selected role
  */
-function runAddComparison(role) {
-  // Get input values
+function runAddComparison(system, role) {
   const servicenowText = document.getElementById('add-servicenow').value;
   const reflectionText = document.getElementById('add-reflection').value;
   
-  // Validate required fields
   if (!servicenowText.trim()) {
     showToast('Please enter ServiceNow Request codes', 'error');
     return;
@@ -671,19 +893,29 @@ function runAddComparison(role) {
     return;
   }
   
-  // Parse inputs WITH role-based branch code conversion
-  const requestedCodes = parseInput(servicenowText, false, role);
-  const addedCodes = parseInput(reflectionText, false, role);
+  // Parse inputs
+  const requestedCodes = parseInput(servicenowText, false, role, system);
+  const addedCodes = parseInput(reflectionText, false, role, system);
   
-  // Separate IA codes from other codes in both lists
+  // Validate based on system
+  let validation;
+  if (system === 'TOPS' || system === 'Postedge') {
+    validation = validateMatrix(addedCodes, role, system);
+  } else if (system === 'FeeAggregator') {
+    validation = validateFeeAggregator(addedCodes, requestedCodes);
+  } else if (system === 'VPS') {
+    validation = validateVPS(addedCodes, requestedCodes);
+  }
+  
+  // Separate IA codes
   const requestedIA = requestedCodes.filter(code => {
     const type = classifyCode(code);
-    return type === 'ia-code' || type === 'branch-bundle';
+    return type === 'ia-code' || type === 'branch-bundle' || type === 'branch-code';
   });
   
   const addedIA = addedCodes.filter(code => {
     const type = classifyCode(code);
-    return type === 'ia-code' || type === 'branch-bundle';
+    return type === 'ia-code' || type === 'branch-bundle' || type === 'branch-code';
   });
   
   // Find matched, missing, and extra IA codes
@@ -691,9 +923,17 @@ function runAddComparison(role) {
   const missingIA = requestedIA.filter(code => !addedIA.includes(code));
   const extraIA = addedIA.filter(code => !requestedIA.includes(code));
   
-  // Check for INS codes in missing
+  // Check for INS/MIR codes in missing AND extra
   const missingWithINS = missingIA.map(code => {
-    const insCheck = detectINS(code);
+    const insCheck = detectINSMIR(code);
+    return {
+      code: code,
+      ins: insCheck
+    };
+  });
+  
+  const extraWithINS = extraIA.map(code => {
+    const insCheck = detectINSMIR(code);
     return {
       code: code,
       ins: insCheck
@@ -703,17 +943,14 @@ function runAddComparison(role) {
   // Get non-IA codes from added (matrix codes, etc.)
   const nonIACodes = addedCodes.filter(code => {
     const type = classifyCode(code);
-    return type !== 'ia-code' && type !== 'branch-bundle';
+    return type !== 'ia-code' && type !== 'branch-bundle' && type !== 'branch-code';
   });
-  
-  // Validate matrix requirements
-  const validation = validateMatrix(addedCodes, role);
   
   // Calculate stats
   const stats = {
     matched: matchedIA.length,
     missing: missingIA.length,
-    extra: nonIACodes.length,
+    extra: nonIACodes.length + extraIA.length,
     errors: validation.errors.length
   };
   
@@ -724,52 +961,39 @@ function runAddComparison(role) {
     allAddedCodes: addedCodes,
     matched: matchedIA,
     missing: missingWithINS,
-    extra: extraIA,
+    extra: extraWithINS,
     nonIACodes: nonIACodes,
     validation: validation,
     stats: stats,
-    role: role
+    role: role,
+    system: system
   });
   
-  // Log with branch code conversion info if applicable
-  let logMsg = `Add comparison completed for ${role}: ${matchedIA.length} matched, ${missingIA.length} missing`;
-  if (roleSupportsBranchCodes(role)) {
-    logMsg += ' (with branch code conversion)';
-  }
+  let logMsg = `Add comparison completed for ${system}`;
+  if (role) logMsg += ` - ${role}`;
+  logMsg += `: ${matchedIA.length} matched, ${missingIA.length} missing`;
+  
   logActivity(logMsg);
   showToast('Comparison complete', 'success');
 }
 
 /**
- * Run Modify mode comparison
- * @param {string} role - Selected role
+ * Run Modify mode comparison (TOPS only)
  */
-function runModifyComparison(role) {
-  // Get input values
+function runModifyComparison(system, role) {
   const servicenowText = document.getElementById('modify-servicenow').value;
   const deletedText = document.getElementById('modify-deleted').value;
   const readdedText = document.getElementById('modify-readded').value;
   
-  // Validate required fields
-  if (!servicenowText.trim()) {
-    showToast('Please enter ServiceNow Request codes', 'error');
+  if (!servicenowText.trim() || !deletedText.trim() || !readdedText.trim()) {
+    showToast('Please fill all fields', 'error');
     return;
   }
   
-  if (!deletedText.trim()) {
-    showToast('Please enter Reflection Deleted codes', 'error');
-    return;
-  }
-  
-  if (!readdedText.trim()) {
-    showToast('Please enter Reflection Re-Added codes', 'error');
-    return;
-  }
-  
-  // Parse inputs WITH role-based branch code conversion
-  const requestedCodes = parseInput(servicenowText, false, role);
-  const deletedCodes = parseInput(deletedText, false, role);
-  const readdedCodes = parseInput(readdedText, false, role);
+  // Parse inputs
+  const requestedCodes = parseInput(servicenowText, false, role, system);
+  const deletedCodes = parseInput(deletedText, false, role, system);
+  const readdedCodes = parseInput(readdedText, false, role, system);
   
   // Check what was not re-added
   const notReadded = deletedCodes.filter(code => !readdedCodes.includes(code));
@@ -779,7 +1003,7 @@ function runModifyComparison(role) {
   const requestedNotInReadded = requestedCodes.filter(code => !readdedCodes.includes(code));
   
   // Validate matrix requirements on final re-added codes
-  const validation = validateMatrix(readdedCodes, role);
+  const validation = validateMatrix(readdedCodes, role, system);
   
   // Add warning if codes not re-added
   if (notReadded.length > 0) {
@@ -804,14 +1028,11 @@ function runModifyComparison(role) {
     requestedNotInReadded: requestedNotInReadded,
     validation: validation,
     stats: stats,
-    role: role
+    role: role,
+    system: system
   });
   
-  let logMsg = `Modify comparison completed for ${role}: ${notReadded.length} not re-added`;
-  if (roleSupportsBranchCodes(role)) {
-    logMsg += ' (with branch code conversion)';
-  }
-  logActivity(logMsg);
+  logActivity(`Modify comparison completed for ${role}: ${notReadded.length} not re-added`);
   showToast('Comparison complete', 'success');
 }
 
@@ -819,32 +1040,25 @@ function runModifyComparison(role) {
  * Run Monthly mode comparison
  */
 function runMonthlyComparison() {
-  // Get input values
   const excelText = document.getElementById('monthly-excel').value;
-  const trackerText = document.getElementById('monthly-tracker').value;
+  const servicenowText = document.getElementById('monthly-servicenow').value;
   
-  // Validate required fields
-  if (!excelText.trim()) {
-    showToast('Please enter Excel codes', 'error');
-    return;
-  }
-  
-  if (!trackerText.trim()) {
-    showToast('Please enter Tracker codes', 'error');
+  if (!excelText.trim() || !servicenowText.trim()) {
+    showToast('Please fill both fields', 'error');
     return;
   }
   
   // Parse inputs (strip RRRR= from Excel)
   const excelCodes = parseInput(excelText, true);
-  const trackerCodes = parseInput(trackerText, false);
+  const servicenowCodes = parseInput(servicenowText, false);
   
-  // Find duplicates (codes in both lists)
-  const duplicates = excelCodes.filter(code => trackerCodes.includes(code));
+  // Find matches (codes in both lists)
+  const matches = excelCodes.filter(code => servicenowCodes.includes(code));
   
   // Display results
-  displayMonthlyResults(excelCodes, trackerCodes, duplicates);
+  displayMonthlyResults(excelCodes, servicenowCodes, matches);
   
-  logActivity(`Monthly comparison completed: ${duplicates.length} matches found`);
+  logActivity(`Monthly comparison completed: ${matches.length} matches found`);
   showToast('Comparison complete', 'success');
 }
 
@@ -855,13 +1069,8 @@ function checkBranchDuplicates() {
   const branchText = document.getElementById('branch-bundle-codes').value;
   const checkText = document.getElementById('codes-to-check').value;
   
-  if (!branchText.trim()) {
-    showToast('Please enter branch bundle codes', 'error');
-    return;
-  }
-  
-  if (!checkText.trim()) {
-    showToast('Please enter codes to check', 'error');
+  if (!branchText.trim() || !checkText.trim()) {
+    showToast('Please fill both fields', 'error');
     return;
   }
   
@@ -877,17 +1086,15 @@ function checkBranchDuplicates() {
   showToast('Branch check complete', 'success');
 }
 
-// Continue to Part 3...
 // ============================================
 // DISPLAY FUNCTIONS
 // ============================================
 
 /**
  * Display Add mode results
- * @param {Object} results - Comparison results
  */
 function displayAddResults(results) {
-  const { requestedCodes, addedCodes, allAddedCodes, matched, missing, extra, nonIACodes, validation, stats, role } = results;
+  const { requestedCodes, addedCodes, allAddedCodes, matched, missing, extra, nonIACodes, validation, stats, role, system } = results;
   
   // Show results section
   document.getElementById('results-section').style.display = 'block';
@@ -903,13 +1110,27 @@ function displayAddResults(results) {
     document.getElementById('stat-errors').textContent = stats.errors;
   }
   
+  // Update requirements title based on system
+  const reqTitle = document.getElementById('requirements-title');
+  if (system === 'TOPS' || system === 'Postedge') {
+    reqTitle.textContent = '💡 Matrix Requirements Validation';
+  } else {
+    reqTitle.textContent = '💡 Knowledge Base Requirements Validation';
+  }
+  
   // Render side-by-side comparison
-  renderSideBySideComparison(requestedCodes, allAddedCodes, matched, missing, extra, role);
+  renderSideBySideComparison(requestedCodes, allAddedCodes, matched, missing, extra, role, system, validation);
   
-  // Render matrix validation details
-  renderMatrixValidation(validation, role, 'matrix-validation-details');
+  // Render validation details
+  if (system === 'TOPS' || system === 'Postedge') {
+    renderMatrixValidation(validation, role, system, 'requirements-validation-details');
+  } else if (system === 'FeeAggregator') {
+    renderFeeAggregatorValidation(validation, 'requirements-validation-details');
+  } else if (system === 'VPS') {
+    renderVPSValidation(validation, 'requirements-validation-details');
+  }
   
-  // Render errors
+  // Render errors and warnings
   renderErrorsAndWarnings(validation.errors, validation.warnings, 'validation-errors', 'warnings-list');
   
   // Scroll to results
@@ -920,10 +1141,9 @@ function displayAddResults(results) {
 
 /**
  * Display Modify mode results
- * @param {Object} results - Comparison results
  */
 function displayModifyResults(results) {
-  const { deletedCodes, readdedCodes, requestedCodes, notReadded, requestedInReadded, requestedNotInReadded, validation, stats, role } = results;
+  const { deletedCodes, readdedCodes, requestedCodes, notReadded, requestedInReadded, requestedNotInReadded, validation, stats, role, system } = results;
   
   // Show results section
   document.getElementById('results-section').style.display = 'block';
@@ -943,7 +1163,7 @@ function displayModifyResults(results) {
   renderFourColumnComparison(deletedCodes, readdedCodes, requestedCodes, readdedCodes, notReadded, requestedInReadded);
   
   // Render matrix validation details
-  renderMatrixValidation(validation, role, 'matrix-validation-details-modify');
+  renderMatrixValidation(validation, role, system, 'requirements-validation-details-modify');
   
   // Render errors and warnings
   renderErrorsAndWarnings(validation.errors, validation.warnings, 'validation-errors-modify', 'warnings-list-modify');
@@ -956,11 +1176,8 @@ function displayModifyResults(results) {
 
 /**
  * Display Monthly mode results
- * @param {Array<string>} excelCodes - Excel codes
- * @param {Array<string>} trackerCodes - Tracker codes
- * @param {Array<string>} duplicates - Duplicate codes
  */
-function displayMonthlyResults(excelCodes, trackerCodes, duplicates) {
+function displayMonthlyResults(excelCodes, servicenowCodes, matches) {
   // Show results section
   document.getElementById('results-section').style.display = 'block';
   document.getElementById('add-results').style.display = 'none';
@@ -975,7 +1192,7 @@ function displayMonthlyResults(excelCodes, trackerCodes, duplicates) {
     const item = document.createElement('div');
     item.className = 'vertical-code-item';
     
-    if (duplicates.includes(code)) {
+    if (matches.includes(code)) {
       item.classList.add('matched');
     }
     
@@ -983,34 +1200,34 @@ function displayMonthlyResults(excelCodes, trackerCodes, duplicates) {
     excelList.appendChild(item);
   });
   
-  // Render Tracker codes
-  const trackerList = document.getElementById('tracker-codes-list');
-  trackerList.innerHTML = '';
+  // Render ServiceNow codes
+  const servicenowList = document.getElementById('servicenow-codes-list');
+  servicenowList.innerHTML = '';
   
-  trackerCodes.forEach(code => {
+  servicenowCodes.forEach(code => {
     const item = document.createElement('div');
     item.className = 'vertical-code-item';
     
-    if (duplicates.includes(code)) {
+    if (matches.includes(code)) {
       item.classList.add('matched');
     }
     
     item.textContent = code;
-    trackerList.appendChild(item);
+    servicenowList.appendChild(item);
   });
   
   // Render summary
   const summaryText = document.getElementById('monthly-summary-text');
   
-  const excelOnly = excelCodes.filter(code => !trackerCodes.includes(code));
-  const trackerOnly = trackerCodes.filter(code => !excelCodes.includes(code));
+  const excelOnly = excelCodes.filter(code => !servicenowCodes.includes(code));
+  const servicenowOnly = servicenowCodes.filter(code => !excelCodes.includes(code));
   
   summaryText.innerHTML = `
     <p><strong>Total Excel Codes:</strong> ${excelCodes.length}</p>
-    <p><strong>Total Tracker Codes:</strong> ${trackerCodes.length}</p>
-    <p><strong>Matched (Green):</strong> ${duplicates.length}</p>
+    <p><strong>Total ServiceNow Codes:</strong> ${servicenowCodes.length}</p>
+    <p><strong>Matched (Green):</strong> ${matches.length}</p>
     <p><strong>Excel Only:</strong> ${excelOnly.length}</p>
-    <p><strong>Tracker Only:</strong> ${trackerOnly.length}</p>
+    <p><strong>ServiceNow Only:</strong> ${servicenowOnly.length}</p>
   `;
   
   // Scroll to results
@@ -1021,8 +1238,6 @@ function displayMonthlyResults(excelCodes, trackerCodes, duplicates) {
 
 /**
  * Display branch checker results
- * @param {Array<string>} duplicates - Duplicate codes
- * @param {Array<string>} unique - Unique codes
  */
 function displayBranchCheckerResults(duplicates, unique) {
   const resultsDiv = document.getElementById('branch-checker-results');
@@ -1087,7 +1302,7 @@ function displayBranchCheckerResults(duplicates, unique) {
 /**
  * Render side-by-side comparison for Add mode
  */
-function renderSideBySideComparison(requestedCodes, addedCodes, matched, missing, extra, role) {
+function renderSideBySideComparison(requestedCodes, addedCodes, matched, missing, extra, role, system, validation) {
   const requestedList = document.getElementById('requested-codes-list');
   const addedList = document.getElementById('added-codes-list');
   
@@ -1099,7 +1314,7 @@ function renderSideBySideComparison(requestedCodes, addedCodes, matched, missing
     const item = document.createElement('div');
     item.className = 'vertical-code-item';
     
-    const insCheck = detectINS(code);
+    const insCheck = detectINSMIR(code);
     
     if (matched.includes(code)) {
       item.classList.add('matched');
@@ -1107,12 +1322,12 @@ function renderSideBySideComparison(requestedCodes, addedCodes, matched, missing
     } else {
       item.classList.add('missing');
       
-      if (insCheck.isINS) {
+      if (insCheck.isINSMIR) {
         item.classList.add('ins-warning');
         item.innerHTML = `
           <span>${code}</span>
           <span style="font-size: 0.75rem;">
-            <span class="code-badge">INS</span>
+            <span class="code-badge">INS/MIR</span>
             ${insCheck.reason}
           </span>
         `;
@@ -1130,26 +1345,49 @@ function renderSideBySideComparison(requestedCodes, addedCodes, matched, missing
     item.className = 'vertical-code-item';
     
     const codeType = classifyCode(code);
+    const insCheck = detectINSMIR(code);
     
     if (requestedCodes.includes(code)) {
       item.classList.add('matched');
       item.innerHTML = `<span>${code}</span><span style="font-size: 0.75rem;">✓ Requested</span>`;
     } else {
-      // Not requested - could be matrix requirement or extra
-      if (codeType === 'func-scon' || codeType === 'rpts-base' || codeType === 'rpts-regional' || codeType === 'default-file') {
-        item.classList.add('extra');
+      // Not requested - check if it's a matrix requirement or truly extra
+      const isMatrixReq = isRequiredByMatrixOrKB(code, system, validation);
+      
+      // Check if wrong RPTS
+      const isWrongRPTS = validation.details && validation.details.rpts && 
+                          validation.details.rpts.wrongBase && 
+                          validation.details.rpts.base === code;
+      
+      if (isWrongRPTS) {
+        item.classList.add('wrong-rpts');
+        item.innerHTML = `<span>${code}</span><span style="font-size: 0.75rem;">⚠️ Wrong RPTS</span>`;
+      } else if (isMatrixReq) {
+        item.classList.add('matrix-req');
         item.innerHTML = `<span>${code}</span><span style="font-size: 0.75rem;">Matrix Req</span>`;
       } else {
+        // Truly extra (not requested, not required)
         item.classList.add('extra');
-        item.innerHTML = `<span>${code}</span><span style="font-size: 0.75rem;">Extra</span>`;
+        
+        if (insCheck.isINSMIR) {
+          item.innerHTML = `
+            <span>${code}</span>
+            <span style="font-size: 0.75rem;">
+              <span class="code-badge">INS/MIR</span>
+              ${insCheck.reason}
+            </span>
+          `;
+        } else {
+          item.innerHTML = `<span>${code}</span><span style="font-size: 0.75rem;">✗ Extra</span>`;
+        }
       }
     }
     
     addedList.appendChild(item);
   });
   
-  // Add note about branch code conversion if applicable
-  if (roleSupportsBranchCodes(role)) {
+  // Add branch code conversion note (ONLY ONCE)
+  if ((system === 'TOPS' || system === 'Postedge') && role && roleSupportsBranchCodes(role) && !appState.branchCodeNotificationShown) {
     const note = document.createElement('div');
     note.style.marginTop = '1rem';
     note.style.padding = '0.5rem';
@@ -1160,8 +1398,62 @@ function renderSideBySideComparison(requestedCodes, addedCodes, matched, missing
     note.style.color = 'var(--color-accent)';
     note.innerHTML = '💡 3-digit branch codes automatically converted to *A###FC format for this role';
     
-    requestedList.parentElement.insertBefore(note, requestedList.parentElement.firstChild);
+    requestedList.parentElement.parentElement.insertBefore(note, requestedList.parentElement);
+    
+    appState.branchCodeNotificationShown = true;
   }
+}
+
+/**
+ * Check if code is required by matrix or knowledge base
+ */
+function isRequiredByMatrixOrKB(code, system, validation) {
+  const codeType = classifyCode(code);
+  
+  // FUNC/SCON
+  if (codeType === 'func-scon') {
+    if (validation.details && validation.details.funcScon) {
+      return validation.details.funcScon.required.includes(code) || 
+             validation.details.funcScon.found.includes(code);
+    }
+    return true;
+  }
+  
+  // RPTS (but not wrong RPTS)
+  if (codeType === 'rpts-base' || codeType === 'rpts-regional') {
+    if (validation.details && validation.details.rpts) {
+      // Don't mark as matrix req if it's the wrong base
+      if (validation.details.rpts.wrongBase && validation.details.rpts.base === code) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  // Default file/MRGN
+  if (codeType === 'default-file') {
+    return true;
+  }
+  
+  // Fee Aggregator specific
+  if (system === 'FeeAggregator') {
+    if (code === '*WGDFAR' || code === '*FEAGFUNC') {
+      return true;
+    }
+  }
+  
+  // VPS specific
+  if (system === 'VPS') {
+    if (code === '*VPSWGFUNC') {
+      return true;
+    }
+    // Branch codes as MRGN
+    if (codeType === 'branch-code') {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 /**
@@ -1203,7 +1495,7 @@ function renderFourColumnComparison(deletedCodes, readdedCodes, requestedCodes, 
       item.classList.add('matched');
       item.textContent = code;
     } else {
-      item.classList.add('extra');
+      item.classList.add('matrix-req');
       item.innerHTML = `<span>${code}</span><span style="font-size: 0.75rem;">New</span>`;
     }
     
@@ -1236,9 +1528,9 @@ function renderFourColumnComparison(deletedCodes, readdedCodes, requestedCodes, 
 }
 
 /**
- * Render matrix validation details
+ * Render matrix validation details with LEVELS
  */
-function renderMatrixValidation(validation, role, containerId) {
+function renderMatrixValidation(validation, role, system, containerId) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
   
@@ -1247,17 +1539,50 @@ function renderMatrixValidation(validation, role, containerId) {
   
   let html = `<div style="display: grid; gap: 1rem;">`;
   
+  // Matrix Levels
+  if (config.levels) {
+    html += `<div>
+      <h4 style="color: var(--color-accent); margin-bottom: 0.5rem;">Matrix Levels:</h4>
+      <div style="background-color: var(--color-bg-primary); padding: 0.75rem; border-radius: var(--radius-sm); font-family: var(--font-family-mono); font-size: 0.875rem;">
+        <div style="display: grid; grid-template-columns: repeat(9, 1fr); gap: 0.5rem; text-align: center;">
+          <div><strong>R</strong><br>${config.levels.R !== null ? config.levels.R : 'null'}</div>
+          <div><strong>C</strong><br>${config.levels.C !== null ? config.levels.C : 'null'}</div>
+          <div><strong>V</strong><br>${config.levels.V !== null ? config.levels.V : 'null'}</div>
+          <div><strong>O</strong><br>${config.levels.O !== null ? config.levels.O : 'null'}</div>
+          <div><strong>I</strong><br>${config.levels.I !== null ? config.levels.I : 'null'}</div>
+          <div><strong>F</strong><br>${config.levels.F !== null ? config.levels.F : 'null'}</div>
+          <div><strong>B</strong><br>${config.levels.B !== null ? config.levels.B : 'null'}</div>
+          <div><strong>M</strong><br>${config.levels.M !== null ? config.levels.M : 'null'}</div>
+          <div><strong>P</strong><br>${config.levels.P !== null ? config.levels.P : 'null'}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+  
   // FUNC/SCON
-  if (validation.details.funcScon.required.length > 0) {
+  if (system === 'Postedge') {
+    html += `<div>
+      <h4 style="color: var(--color-info); margin-bottom: 0.5rem;">Postedge FUNC/SCON:</h4>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <span class="vertical-code-item ${validation.details.funcScon.found.includes('RRRR') ? 'matched' : 'missing'}">
+          RRRR ${validation.details.funcScon.found.includes('RRRR') ? '✓' : '✗'}
+        </span>
+        <span class="vertical-code-item matched">No SCON required ✓</span>
+      </div>
+    </div>`;
+  } else if (validation.details.funcScon.required.length > 0) {
     html += `<div>
       <h4 style="color: var(--color-info); margin-bottom: 0.5rem;">FUNC/SCON Requirements:</h4>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">`;
     
     validation.details.funcScon.required.forEach(code => {
-      const found = validation.details.funcScon.found.includes(code);
+      const found = validation.details.funcScon.found.includes(code) || 
+                    validation.details.funcScon.found.includes(code + ' (auto-defaulted)');
       const className = found ? 'matched' : 'missing';
       const icon = found ? '✓' : '✗';
-      html += `<span class="vertical-code-item ${className}">${code} ${icon}</span>`;
+      const label = code.includes('SCON') && found && !validation.details.funcScon.found.includes(code) ? 
+                    ' (auto-defaulted)' : '';
+      html += `<span class="vertical-code-item ${className}">${code}${label} ${icon}</span>`;
     });
     
     html += `</div></div>`;
@@ -1269,9 +1594,20 @@ function renderMatrixValidation(validation, role, containerId) {
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">`;
   
   if (validation.details.rpts.base) {
-    html += `<span class="vertical-code-item matched">${validation.details.rpts.base} ✓ Base</span>`;
+    const isWrong = validation.details.rpts.wrongBase;
+    const className = isWrong ? 'wrong-rpts' : 'matched';
+    const icon = isWrong ? '⚠️ Wrong' : '✓';
+    html += `<span class="vertical-code-item ${className}">${validation.details.rpts.base} ${icon} Base</span>`;
+    
+    if (isWrong && validation.details.rpts.specificBase) {
+      html += `<span class="vertical-code-item missing">Required: ${validation.details.rpts.specificBase} ✗</span>`;
+    }
   } else {
-    html += `<span class="vertical-code-item missing">Missing Base RPTS ✗</span>`;
+    if (validation.details.rpts.specificBase) {
+      html += `<span class="vertical-code-item missing">${validation.details.rpts.specificBase} required ✗</span>`;
+    } else {
+      html += `<span class="vertical-code-item missing">Missing Base RPTS (WGSTD preferred) ✗</span>`;
+    }
   }
   
   if (validation.details.rpts.regional) {
@@ -1283,13 +1619,92 @@ function renderMatrixValidation(validation, role, containerId) {
   html += `</div></div>`;
   
   // Branch Bundle
-  if (validation.details.branchBundle.allowed) {
-    const status = validation.details.branchBundle.found ? 'Found' : 'Not found';
-    const className = validation.details.branchBundle.found ? 'extra' : '';
+  if (validation.details.branchBundle) {
+    const allowed = validation.details.branchBundle.allowed;
+    const found = validation.details.branchBundle.found;
     html += `<div>
       <h4 style="color: var(--color-info); margin-bottom: 0.5rem;">Branch Bundle:</h4>
-      <span class="vertical-code-item ${className}">Allowed (${status})</span>
+      <span class="vertical-code-item ${allowed ? 'matrix-req' : 'extra'}">
+        ${allowed ? 'Allowed' : 'Not Allowed'} ${found ? '(Found)' : '(Not found)'}
+      </span>
     </div>`;
+  }
+  
+  html += `</div>`;
+  
+  container.innerHTML = html;
+}
+
+/**
+ * Render Fee Aggregator validation
+ */
+function renderFeeAggregatorValidation(validation, containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  
+  let html = `<div style="display: grid; gap: 1rem;">`;
+  
+  html += `<div>
+    <h4 style="color: var(--color-info); margin-bottom: 0.5rem;">Knowledge Base Requirements:</h4>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">`;
+  
+  validation.details.requiredCodes.forEach(code => {
+    const found = validation.details.found.includes(code);
+    const className = found ? 'matched' : 'missing';
+    const icon = found ? '✓' : '✗';
+    html += `<span class="vertical-code-item ${className}">${code} ${icon}</span>`;
+  });
+  
+  html += `</div>
+    <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--color-text-muted);">
+      Fee Aggregator requires: MRGN (*WGDFAR) + IA codes + *FEAGFUNC
+    </p>
+  </div>`;
+  
+  html += `</div>`;
+  
+  container.innerHTML = html;
+}
+
+/**
+ * Render VPS validation
+ */
+function renderVPSValidation(validation, containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  
+  let html = `<div style="display: grid; gap: 1rem;">`;
+  
+  html += `<div>
+    <h4 style="color: var(--color-info); margin-bottom: 0.5rem;">Knowledge Base Requirements:</h4>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">`;
+  
+  const funcFound = validation.details.funcFound;
+  html += `<span class="vertical-code-item ${funcFound ? 'matched' : 'missing'}">
+    ${validation.details.requiredFunc} ${funcFound ? '✓' : '✗'}
+  </span>`;
+  
+  html += `</div>
+    <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--color-text-muted);">
+      VPS requires: IA codes + *VPSWGFUNC + branch codes as MRGN
+    </p>
+  </div>`;
+  
+  // Branch codes and MRGN
+  if (validation.details.branchCodes.length > 0) {
+    html += `<div>
+      <h4 style="color: var(--color-info); margin-bottom: 0.5rem;">Branch Codes & MRGN Mapping:</h4>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">`;
+    
+    validation.details.branchCodes.forEach(branchCode => {
+      const hasMrgn = validation.details.mrgnCodes.includes(branchCode);
+      const className = hasMrgn ? 'matched' : 'missing';
+      html += `<span class="vertical-code-item ${className}">
+        *A${branchCode}FC → ${branchCode} MRGN ${hasMrgn ? '✓' : '✗'}
+      </span>`;
+    });
+    
+    html += `</div></div>`;
   }
   
   html += `</div>`;
@@ -1337,7 +1752,6 @@ function renderErrorsAndWarnings(errors, warnings, errorsContainerId, warningsCo
   }
 }
 
-// Continue to Part 4...
 // ============================================
 // MATRIX GUIDE FUNCTIONS
 // ============================================
@@ -1361,6 +1775,26 @@ function updateMatrixGuide() {
   }
   
   let html = '';
+  
+  // Matrix Levels
+  if (config.levels) {
+    html += `<div class="matrix-section">
+      <h3>Matrix Levels</h3>
+      <div style="background-color: var(--color-bg-primary); padding: 1rem; border-radius: var(--radius-sm); font-family: var(--font-family-mono);">
+        <div style="display: grid; grid-template-columns: repeat(9, 1fr); gap: 0.75rem; text-align: center; font-size: 0.9rem;">
+          <div><strong style="color: var(--color-accent);">R</strong><br><span style="color: var(--color-text-primary);">${config.levels.R !== null ? config.levels.R : 'null'}</span></div>
+          <div><strong style="color: var(--color-accent);">C</strong><br><span style="color: var(--color-text-primary);">${config.levels.C !== null ? config.levels.C : 'null'}</span></div>
+          <div><strong style="color: var(--color-accent);">V</strong><br><span style="color: var(--color-text-primary);">${config.levels.V !== null ? config.levels.V : 'null'}</span></div>
+          <div><strong style="color: var(--color-accent);">O</strong><br><span style="color: var(--color-text-primary);">${config.levels.O !== null ? config.levels.O : 'null'}</span></div>
+          <div><strong style="color: var(--color-accent);">I</strong><br><span style="color: var(--color-text-primary);">${config.levels.I !== null ? config.levels.I : 'null'}</span></div>
+          <div><strong style="color: var(--color-accent);">F</strong><br><span style="color: var(--color-text-primary);">${config.levels.F !== null ? config.levels.F : 'null'}</span></div>
+          <div><strong style="color: var(--color-accent);">B</strong><br><span style="color: var(--color-text-primary);">${config.levels.B !== null ? config.levels.B : 'null'}</span></div>
+          <div><strong style="color: var(--color-accent);">M</strong><br><span style="color: var(--color-text-primary);">${config.levels.M !== null ? config.levels.M : 'null'}</span></div>
+          <div><strong style="color: var(--color-accent);">P</strong><br><span style="color: var(--color-text-primary);">${config.levels.P !== null ? config.levels.P : 'null'}</span></div>
+        </div>
+      </div>
+    </div>`;
+  }
   
   // Role Requirements
   html += `<div class="matrix-section">
@@ -1386,11 +1820,11 @@ function updateMatrixGuide() {
         <tr>
           <td>66</td>
           <td><code>${config.func_scon['66'].FUNC}</code></td>
-          <td><code>${config.func_scon['66'].SCON}</code></td>
+          <td><code>${config.func_scon['66'].SCON || 'Auto-defaulted'}</code></td>
         </tr>
       </tbody>
     </table>
-    <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--color-text-muted);">(Defaulted)</p>`;
+    <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--color-text-muted);">SCON auto-defaults when correct FUNC is added</p>`;
   } else {
     html += `<p>No FUNC/SCON requirements for this role</p>`;
   }
@@ -1406,15 +1840,27 @@ function updateMatrixGuide() {
   
   // RPTS Requirements
   html += `<div class="matrix-section">
-    <h3>RPTS Requirements</h3>
-    <h4>Must include:</h4>
+    <h3>RPTS Requirements</h3>`;
+  
+  if (config.rpts.specificBase) {
+    html += `<p><strong>Required Base:</strong> <code>${config.rpts.specificBase}</code></p>`;
+  } else {
+    html += `<h4>Base RPTS (choose one):</h4>
     <ul>
-      <li>One WG base: <code>WGSTD</code>, <code>WGCOMMSTD</code>, <code>WGBRANCH</code>, <code>WGCOMPL</code></li>
-      <li>One regional: <code>REGA</code>, <code>REGB</code>, <code>REGC</code>, <code>REGD</code>, <code>REGE</code>, <code>REGF</code>, <code>REGALL</code></li>
+      <li><code>WGSTD</code> (most common)</li>
+      <li><code>WGCOMMSTD</code></li>
+      <li><code>WGBRANCH</code></li>
+      <li><code>WGCOMPL</code></li>
+    </ul>`;
+  }
+  
+  html += `<h4>Regional (choose one):</h4>
+    <ul>
+      <li><code>REGA</code>, <code>REGB</code>, <code>REGC</code>, <code>REGD</code>, <code>REGE</code>, <code>REGF</code>, <code>REGALL</code></li>
     </ul>`;
   
   if (config.allowBranchBundle) {
-    html += `<p>Note: When branch bundle (*A###FC) present, must include BRX### or BRX###FC</p>`;
+    html += `<p><strong>Note:</strong> Branch bundles (*A###FC) allowed with corresponding BRX codes</p>`;
   }
   
   if (config.rpts.notes.length > 0) {
@@ -1446,7 +1892,7 @@ function updateMatrixGuide() {
     html += `<div class="matrix-section">
       <h3>Branch Code Support</h3>
       <p style="color: var(--color-accent);">✓ This role supports automatic branch code conversion</p>
-      <p>3-digit codes (e.g., <code>417</code>) will automatically be converted to <code>*A417FC</code> format</p>
+      <p>3-digit codes (e.g., <code>417</code>) automatically convert to <code>*A417FC</code> format</p>
     </div>`;
   }
   
@@ -1454,6 +1900,8 @@ function updateMatrixGuide() {
   html += `<div class="matrix-section">
     <h3>Additional Notes</h3>
     <p>• Branch bundles ${config.allowBranchBundle ? '<span style="color: var(--color-success);">allowed</span>' : '<span style="color: var(--color-error);">not allowed</span>'} for this role</p>
+    <p>• Only ONE base RPTS allowed (no duplicates)</p>
+    <p>• Only ONE regional RPTS allowed (no duplicates)</p>
   </div>`;
   
   detailsDiv.innerHTML = html;
@@ -1465,14 +1913,12 @@ function updateMatrixGuide() {
 
 /**
  * Open modal
- * @param {string} modalId - ID of modal to open
  */
 function openModal(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) {
     modal.classList.add('active');
     
-    // Update log content if opening log modal
     if (modalId === 'log-modal') {
       updateLogModal();
     }
@@ -1481,7 +1927,6 @@ function openModal(modalId) {
 
 /**
  * Close modal
- * @param {string} modalId - ID of modal to close
  */
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
@@ -1538,7 +1983,6 @@ function exportValidationCSV(mode) {
   const rows = [['Section', 'Code', 'Status', 'Notes']];
   
   if (mode === 'Add') {
-    // Get requested codes
     const requestedItems = document.querySelectorAll('#requested-codes-list .vertical-code-item');
     requestedItems.forEach(item => {
       const text = item.textContent;
@@ -1547,13 +1991,12 @@ function exportValidationCSV(mode) {
       if (item.classList.contains('matched')) {
         rows.push(['Requested', code, 'Matched', 'Code was added']);
       } else if (item.classList.contains('ins-warning')) {
-        rows.push(['Requested', code, 'Missing', 'INS CODE - Not added']);
+        rows.push(['Requested', code, 'Missing', 'INS/MIR CODE - Not added']);
       } else {
         rows.push(['Requested', code, 'Missing', 'Not added']);
       }
     });
     
-    // Get added codes
     const addedItems = document.querySelectorAll('#added-codes-list .vertical-code-item');
     addedItems.forEach(item => {
       const text = item.textContent;
@@ -1561,12 +2004,15 @@ function exportValidationCSV(mode) {
       
       if (item.classList.contains('matched')) {
         rows.push(['Added', code, 'Matched', 'Requested']);
+      } else if (item.classList.contains('matrix-req')) {
+        rows.push(['Added', code, 'Matrix Req', 'Required by matrix']);
+      } else if (item.classList.contains('wrong-rpts')) {
+        rows.push(['Added', code, 'Wrong RPTS', 'Incorrect base RPTS']);
       } else if (item.classList.contains('extra')) {
-        rows.push(['Added', code, 'Extra', 'Matrix requirement or extra']);
+        rows.push(['Added', code, 'Extra', 'Not requested, not required']);
       }
     });
   } else if (mode === 'Modify') {
-    // Get deleted codes
     const deletedItems = document.querySelectorAll('#modify-deleted-list .vertical-code-item');
     deletedItems.forEach(item => {
       const text = item.textContent;
@@ -1579,7 +2025,6 @@ function exportValidationCSV(mode) {
       }
     });
     
-    // Get requested codes
     const requestedItems = document.querySelectorAll('#modify-requested-list .vertical-code-item');
     requestedItems.forEach(item => {
       const text = item.textContent;
@@ -1593,13 +2038,11 @@ function exportValidationCSV(mode) {
     });
   }
   
-  // Add errors
   const errorItems = document.querySelectorAll('.error-item');
   errorItems.forEach(item => {
     rows.push(['Error', '', '', item.textContent]);
   });
   
-  // Add warnings
   const warningItems = document.querySelectorAll('.warning-item');
   warningItems.forEach(item => {
     rows.push(['Warning', '', '', item.textContent]);
@@ -1612,29 +2055,29 @@ function exportValidationCSV(mode) {
  * Export monthly results to CSV
  */
 function exportMonthlyCSV() {
-  const rows = [['Excel Codes', 'Tracker Codes', 'Status']];
+  const rows = [['Excel Codes', 'ServiceNow Codes', 'Status']];
   
   const excelItems = document.querySelectorAll('#excel-codes-list .vertical-code-item');
-  const trackerItems = document.querySelectorAll('#tracker-codes-list .vertical-code-item');
+  const servicenowItems = document.querySelectorAll('#servicenow-codes-list .vertical-code-item');
   
-  const maxLength = Math.max(excelItems.length, trackerItems.length);
+  const maxLength = Math.max(excelItems.length, servicenowItems.length);
   
   for (let i = 0; i < maxLength; i++) {
     const excelCode = i < excelItems.length ? excelItems[i].textContent : '';
-    const trackerCode = i < trackerItems.length ? trackerItems[i].textContent : '';
+    const servicenowCode = i < servicenowItems.length ? servicenowItems[i].textContent : '';
     
     let status = '';
-    if (excelCode && trackerCode && 
+    if (excelCode && servicenowCode && 
         excelItems[i].classList.contains('matched') && 
-        trackerItems[i].classList.contains('matched')) {
+        servicenowItems[i].classList.contains('matched')) {
       status = 'Matched';
-    } else if (excelCode && !trackerCode) {
+    } else if (excelCode && !servicenowCode) {
       status = 'Excel Only';
-    } else if (!excelCode && trackerCode) {
-      status = 'Tracker Only';
+    } else if (!excelCode && servicenowCode) {
+      status = 'ServiceNow Only';
     }
     
-    rows.push([excelCode, trackerCode, status]);
+    rows.push([excelCode, servicenowCode, status]);
   }
   
   downloadCSV(rows, 'wg-monthly-comparison.csv');
@@ -1642,8 +2085,6 @@ function exportMonthlyCSV() {
 
 /**
  * Download CSV file
- * @param {Array<Array<string>>} rows - CSV data
- * @param {string} filename - File name
  */
 function downloadCSV(rows, filename) {
   const csv = rows.map(row => 
@@ -1675,7 +2116,6 @@ function loadOptions() {
     appState.options = JSON.parse(savedOptions);
   }
   
-  // Apply options to UI
   document.getElementById('opt-auto-scroll').checked = appState.options.autoScroll;
   document.getElementById('opt-show-stats').checked = appState.options.showStats;
   document.getElementById('opt-log-activity').checked = appState.options.logActivity;
@@ -1702,12 +2142,15 @@ function saveOptions() {
  * Initialize the application
  */
 function initializeApp() {
-  console.log('Initializing WG Access Comparator...');
+  console.log('Initializing WG Access Comparator v3.0...');
   
   // Load options
   loadOptions();
   
   // Set up event listeners
+  
+  // System change
+  document.getElementById('system-select').addEventListener('change', onSystemChange);
   
   // Mode change
   document.getElementById('mode-select').addEventListener('change', onModeChange);
@@ -1740,7 +2183,6 @@ function initializeApp() {
       if (modalId) {
         closeModal(modalId);
       } else {
-        // Find parent modal
         const modal = e.target.closest('.modal');
         if (modal) {
           closeModal(modal.id);
@@ -1772,14 +2214,13 @@ function initializeApp() {
     });
   });
   
-  // Keyboard shortcut: Ctrl/Cmd + Enter to compare
+  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       onCompare();
     }
     
-    // Escape to close modals
     if (e.key === 'Escape') {
       document.querySelectorAll('.modal.active').forEach(modal => {
         closeModal(modal.id);
@@ -1788,14 +2229,16 @@ function initializeApp() {
   });
   
   // Initialize mode visibility
+  onSystemChange();
   onModeChange();
   
   // Initial token counts
   updateAllTokenCounts();
   
-  console.log('✅ WG Access Comparator initialized successfully');
-  console.log('✨ NEW: Branch code conversion enabled for BA/Cage roles');
-  logActivity('Application started with branch code conversion support');
+  console.log('✅ WG Access Comparator v3.0 initialized successfully');
+  console.log('✨ Multi-System Support: TOPS, Postedge, Fee Aggregator, VPS');
+  console.log('✨ New Features: INS/MIR detection, Wrong RPTS highlighting, Matrix Levels, SCON auto-default');
+  logActivity('Application started - v3.0 Multi-System');
 }
 
 // Initialize when DOM is ready
@@ -1808,8 +2251,16 @@ if (document.readyState === 'loading') {
 // ============================================
 // CONSOLE WELCOME MESSAGE
 // ============================================
-console.log('%c WG Access Comparator ', 'background: #7c4dff; color: white; font-size: 20px; padding: 10px;');
+console.log('%c WG Access Comparator v3.0 ', 'background: #7c4dff; color: white; font-size: 20px; padding: 10px;');
 console.log('%c Built by David Duke Essel - AQCM ', 'background: #2a2d36; color: #7c4dff; font-size: 14px; padding: 5px;');
-console.log('Version: 2.1');
-console.log('Features: Add, Modify, Monthly modes + Branch Checker + Matrix Guide + Branch Code Conversion');
-console.log('Branch Code Conversion: 3-digit codes (417) → *A417FC for BA/Cage roles');
+console.log('Version: 3.0 - Multi-System Edition');
+console.log('Systems: TOPS, Postedge, Fee Aggregator, VPS (Global Framework)');
+console.log('Features:');
+console.log('  • Branch code conversion (3-digit → *A###FC)');
+console.log('  • INS/MIR detection with yellow badges');
+console.log('  • Wrong RPTS highlighting');
+console.log('  • Matrix Levels display (R C V O I F B M P)');
+console.log('  • SCON auto-default (no error if FUNC correct)');
+console.log('  • RPTS duplicate detection');
+console.log('  • Monthly audit: Excel → ServiceNow comparison');
+console.log('  • Knowledge Base validation for Fee Aggregator & VPS');
